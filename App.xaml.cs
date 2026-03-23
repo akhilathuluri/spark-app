@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System.IO;
+using System.Windows;
 using Scriptly.Models;
 using Scriptly.Services;
 using Scriptly.Windows;
@@ -18,6 +19,12 @@ public partial class App : Application
     private DiagnosticsService? _diagnosticsService;
     private UpdateNotificationService? _updateService;
     private System.Threading.Mutex? _mutex; // kept alive for the process lifetime
+
+    // New diagnostic and resilience services (issues #1–5)
+    private HotkeyThrottleService? _hotkeyThrottle;
+    private SettingsBackupService? _settingsBackup;
+    private TextCaptureDiagnosticsService? _captureDiagnostics;
+    private CustomActionValidationService? _actionValidator;
 
     // Hotkey debounce: prevent rapid repeated presses from spawning multiple windows
     private bool _hotkeyProcessing = false;
@@ -61,6 +68,16 @@ public partial class App : Application
         _textCapture = new TextCaptureService();
         _historyService = new HistoryService();
         _updateService = new UpdateNotificationService();
+
+        // New diagnostic and resilience services (issues #1–5)
+        _hotkeyThrottle = new HotkeyThrottleService();
+        string settingsPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Scriptly", "settings.json");
+        _settingsBackup = new SettingsBackupService(settingsPath);
+        _settingsService.SetBackupService(_settingsBackup);  // Attach to auto-backup on save
+        _captureDiagnostics = new TextCaptureDiagnosticsService();
+        _actionValidator = new CustomActionValidationService();
 
         // Analytics — developer-only, silently disabled if API key is not set
         _analyticsService = new AnalyticsService();
@@ -188,6 +205,13 @@ public partial class App : Application
 
     private async void OnHotkeyPressed()
     {
+        // Throttle: prevent rapid repeated hotkey presses (issue #2: no rate limiting)
+        // Use HotkeyThrottleService for configurable debounce + diagnostics
+        if (_hotkeyThrottle != null && !_hotkeyThrottle.ShouldProcess())
+        {
+            return;  // Suppressed by rate limiter
+        }
+
         // Debounce: prevent rapid repeated hotkey presses from spawning multiple windows
         if (_hotkeyProcessing) return;
         _hotkeyProcessing = true;
@@ -201,12 +225,20 @@ public partial class App : Application
 
             if (string.IsNullOrWhiteSpace(selectedText))
             {
+                // Record failure for diagnostics (issue #1: text capture fails in some apps)
+                if (_captureDiagnostics != null)
+                {
+                    _captureDiagnostics.RecordFailure(_textCapture!.LastDiagnostics, _textCapture!.LastSelectionContext);
+                }
+
                 // Avoid silent no-op behavior; show a throttled hint to the user.
                 var now = DateTime.UtcNow;
                 if ((now - _lastNoTextCapturedNoticeUtc).TotalSeconds > 5)
                 {
                     _lastNoTextCapturedNoticeUtc = now;
-                    var details = _textCapture.GetFailureDiagnosticSummary();
+                    var details = _captureDiagnostics != null
+                        ? _captureDiagnostics.GetDetailedDiagnostics()
+                        : _textCapture.GetFailureDiagnosticSummary();
                     _trayService?.ShowBalloon(
                         "Scriptly",
                         $"Hotkey detected, but no text was captured. Select text and try again. {details}",

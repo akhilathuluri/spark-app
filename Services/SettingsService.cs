@@ -21,6 +21,7 @@ public class SettingsService
 
     private readonly ISecretStore _secretStore;
     private readonly string _settingsPath;
+    private SettingsBackupService? _backupService;  // Optional: set via SetBackupService()
 
     public string? LastRecoveryMessage { get; private set; }
 
@@ -38,6 +39,16 @@ public class SettingsService
     {
         _settingsPath = settingsPath;
         _secretStore = secretStore;
+    }
+
+    /// <summary>
+    /// Optional: attach a backup service to auto-create backups after each save.
+    /// Non-breaking: If not set, Save() works normally without backups.
+    /// (Issue #6: Settings corruption only recovers fields, add backup/restore logic)
+    /// </summary>
+    public void SetBackupService(SettingsBackupService backupService)
+    {
+        _backupService = backupService;
     }
 
     public AppSettings Load()
@@ -101,6 +112,10 @@ public class SettingsService
             Directory.CreateDirectory(Path.GetDirectoryName(_settingsPath)!);
             var json = JsonSerializer.Serialize(persisted, JsonOptions);
             WriteAllTextAtomic(_settingsPath, json);
+
+            // Create backup after successful save (if backup service attached)
+            // Non-breaking: if no backup service, this is silently skipped
+            _backupService?.CreateBackup();
         }
         catch (Exception ex)
         {

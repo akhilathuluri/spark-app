@@ -202,10 +202,11 @@ public partial class ResultWindow : Window
                         Result       = _resultText
                     });
 
-                    // Build diff for text-transform actions
+                    // Build diff for text-transform actions (issue #10: large diff hang UI)
+                    // Use AsyncDiffService to avoid blocking on very long text
                     if (_isDiffAction)
                     {
-                        RenderDiff(_currentSelectedText, _resultText);
+                        _ = BuildDiffAsync(_currentSelectedText, _resultText);  // fire-and-forget
                         DiffToggleButton.Visibility = Visibility.Visible;
                     }
                 }
@@ -402,6 +403,70 @@ public partial class ResultWindow : Window
         new(System.Windows.Media.Color.FromArgb(0x28, 0xFF, 0x40, 0x40));
     private static readonly SolidColorBrush InsertBg =
         new(System.Windows.Media.Color.FromArgb(0x28, 0x40, 0xFF, 0x60));
+    /// <summary>
+    /// Async wrapper for diff computation using AsyncDiffService (issue #10: large diff hang UI).
+    /// For small diffs, computes immediately. For large diffs, uses thread pool.
+    /// Fire-and-forget: result is rendered when available, even if window was closed.
+    /// </summary>
+    private async Task BuildDiffAsync(string original, string result)
+    {
+        try
+        {
+            // Use AsyncDiffService to avoid blocking UI on very long text
+            var chunks = await AsyncDiffService.ComputeAsync(original, result);
+            
+            // Check if window is still visible before rendering (user may have closed it)
+            if (!IsVisible) return;
+
+            // Render on UI thread
+            Dispatcher.Invoke(() => RenderDiffWithChunks(chunks));
+        }
+        catch (Exception ex)
+        {
+            DebugLogService.LogError("ResultWindow.BuildDiffAsync", ex);
+        }
+    }
+
+    private void RenderDiffWithChunks(List<DiffChunk> chunks)
+    {
+        var para = new Paragraph
+        {
+            Margin       = new Thickness(0),
+            Padding      = new Thickness(0),
+            TextAlignment = TextAlignment.Left,
+            FontFamily   = ResultText.FontFamily,
+            FontSize     = ResultText.FontSize
+        };
+
+        foreach (var chunk in chunks)
+        {
+            var run = new Run(chunk.Text);
+            switch (chunk.Type)
+            {
+                case DiffType.Delete:
+                    run.Foreground     = DeleteFg;
+                    run.Background     = DeleteBg;
+                    run.TextDecorations = TextDecorations.Strikethrough;
+                    break;
+                case DiffType.Insert:
+                    run.Foreground = InsertFg;
+                    run.Background = InsertBg;
+                    break;
+                case DiffType.Equal:
+                    run.Foreground = EqualFg;
+                    break;
+            }
+            para.Inlines.Add(run);
+        }
+
+        var doc = new FlowDocument(para)
+        {
+            PagePadding = new Thickness(0),
+            Background  = System.Windows.Media.Brushes.Transparent
+        };
+
+        DiffText.Document = doc;
+    }
 
     private void RenderDiff(string original, string result)
     {
