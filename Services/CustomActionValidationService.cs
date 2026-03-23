@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Scriptly.Models;
+using Spark.Models;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 /// <summary>
 /// Validates custom action prompts to detect potential injection attacks or problematic patterns.
@@ -38,13 +38,13 @@ public class CustomActionValidationService
             WarningLevel.Caution,
             @"ignore.*instruction|forget.*instruction|disregard",
             "Prompt injection hint",
-            "Prompt contains language that might try to override Scriptly's intentions. The LLM will receive clean {text}, not instructions."
+            "Prompt contains language that might try to override Spark's intentions. The LLM will receive clean {text}, not instructions."
         ),
         new ValidationPattern(
             WarningLevel.Caution,
             @"execute|run|compile|eval",
             "Executable language suggested",
-            "Prompt asks the LLM to execute code. Scriptly does not execute code; output is plain text."
+            "Prompt asks the LLM to execute code. Spark does not execute code; output is plain text."
         ),
         new ValidationPattern(
             WarningLevel.Info,

@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 /// <summary>
 /// Detects a system-wide hotkey using a Low-Level Keyboard Hook (WH_KEYBOARD_LL).

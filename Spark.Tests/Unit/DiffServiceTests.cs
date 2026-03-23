@@ -1,7 +1,7 @@
-using Scriptly.Services;
+using Spark.Services;
 using Xunit;
 
-namespace Scriptly.Tests.Unit;
+namespace Spark.Tests.Unit;
 
 public class DiffServiceTests
 {

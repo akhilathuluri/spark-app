@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 /// <summary>
 /// Normalizes AI output for safe, readable UI rendering without changing user intent.

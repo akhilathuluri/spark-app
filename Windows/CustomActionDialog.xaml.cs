@@ -1,10 +1,10 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using Scriptly.Models;
-using Scriptly.Services;
+using Spark.Models;
+using Spark.Services;
 
-namespace Scriptly.Windows;
+namespace Spark.Windows;
 
 public partial class CustomActionDialog : Window
 {
@@ -93,7 +93,7 @@ public partial class CustomActionDialog : Window
     {
         if (string.IsNullOrWhiteSpace(NameBox.Text) || string.IsNullOrWhiteSpace(InstructionsBox.Text))
         {
-            MessageBox.Show("Name and Instructions are required.", "Scriptly", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("Name and Instructions are required.", "Spark", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 

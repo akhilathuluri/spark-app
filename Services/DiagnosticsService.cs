@@ -1,8 +1,8 @@
 using System.IO;
 using System.Text.Json;
-using Scriptly.Models;
+using Spark.Models;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 public class DiagnosticsService
 {
@@ -60,7 +60,7 @@ public class DiagnosticsService
 
             var dir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "Scriptly", "diagnostic-bundles");
+                "Spark", "diagnostic-bundles");
             Directory.CreateDirectory(dir);
 
             var filePath = Path.Combine(dir, $"bundle-{evt.CorrelationId}.json");

@@ -2,10 +2,10 @@ using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
-using Scriptly.Models;
+using Spark.Models;
 using Polly;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 public class AiService : IDisposable
 {
@@ -35,7 +35,7 @@ public class AiService : IDisposable
 
     private static int GetConfiguredTimeoutSeconds()
     {
-        var raw = Environment.GetEnvironmentVariable("SCRIPTLY_HTTP_TIMEOUT_SECONDS");
+        var raw = Environment.GetEnvironmentVariable("Spark_HTTP_TIMEOUT_SECONDS");
         if (!int.TryParse(raw, out var seconds))
             return DefaultHttpTimeoutSeconds;
 
@@ -74,8 +74,8 @@ public class AiService : IDisposable
         {
             using var req = new HttpRequestMessage(HttpMethod.Post, "https://openrouter.ai/api/v1/chat/completions");
             req.Headers.Add("Authorization", $"Bearer {config.ApiKey}");
-            req.Headers.Add("HTTP-Referer", "https://scriptly.app");
-            req.Headers.Add("X-Title", "Scriptly");
+            req.Headers.Add("HTTP-Referer", "https://Spark.app");
+            req.Headers.Add("X-Title", "Spark");
             req.Content = new StringContent(requestBodyJson, Encoding.UTF8, "application/json");
             return await _httpClient.SendAsync(req, ct);
         });
@@ -235,8 +235,8 @@ public class AiService : IDisposable
         {
             using var req = new HttpRequestMessage(HttpMethod.Post, "https://openrouter.ai/api/v1/chat/completions");
             req.Headers.Add("Authorization", $"Bearer {config.ApiKey}");
-            req.Headers.Add("HTTP-Referer", "https://scriptly.app");
-            req.Headers.Add("X-Title", "Scriptly");
+            req.Headers.Add("HTTP-Referer", "https://Spark.app");
+            req.Headers.Add("X-Title", "Spark");
             req.Content = new StringContent(requestBodyJson, Encoding.UTF8, "application/json");
             return await _httpClient.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
         });

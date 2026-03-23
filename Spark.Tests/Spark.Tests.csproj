@@ -16,6 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Scriptly.csproj" />
+    <ProjectReference Include="..\Spark.csproj" />
   </ItemGroup>
 </Project>

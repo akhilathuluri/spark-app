@@ -2,7 +2,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 public enum IconKey
 {

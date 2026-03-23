@@ -1,10 +1,10 @@
 ﻿using System.IO;
 using System.Windows;
-using Scriptly.Models;
-using Scriptly.Services;
-using Scriptly.Windows;
+using Spark.Models;
+using Spark.Services;
+using Spark.Windows;
 
-namespace Scriptly;
+namespace Spark;
 
 public partial class App : Application
 {
@@ -49,11 +49,11 @@ public partial class App : Application
         base.OnStartup(e);
 
         // Enforce single instance — stored as a field so GC never collects it while the app runs
-        _mutex = new System.Threading.Mutex(true, "Scriptly_SingleInstance", out bool created);
+        _mutex = new System.Threading.Mutex(true, "Spark_SingleInstance", out bool created);
         if (!created)
         {
-            MessageBox.Show("Scriptly is already running. Look for the icon in the system tray.",
-                "Scriptly", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Spark is already running. Look for the icon in the system tray.",
+                "Spark", MessageBoxButton.OK, MessageBoxImage.Information);
             Shutdown();
             return;
         }
@@ -73,7 +73,7 @@ public partial class App : Application
         _hotkeyThrottle = new HotkeyThrottleService();
         string settingsPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Scriptly", "settings.json");
+            "Spark", "settings.json");
         _settingsBackup = new SettingsBackupService(settingsPath);
         _settingsService.SetBackupService(_settingsBackup);  // Attach to auto-backup on save
         _captureDiagnostics = new TextCaptureDiagnosticsService();
@@ -111,7 +111,7 @@ public partial class App : Application
         bool registered = _hotkeyService.Register(settings.HotkeyModifiers, settings.HotkeyKey);
 
         if (!registered)
-            _trayService.ShowBalloon("Scriptly — Hotkey conflict",
+            _trayService.ShowBalloon("Spark — Hotkey conflict",
                 $"Could not register {settings.HotkeyModifiers}+{settings.HotkeyKey}. " +
                 "Another app may be using it. Open Settings to choose a different shortcut.",
                 System.Windows.Forms.ToolTipIcon.Warning);
@@ -130,18 +130,18 @@ public partial class App : Application
         // Show balloon on first start or if no API key set
         if (string.IsNullOrWhiteSpace(settings.OpenRouter.ApiKey) && string.IsNullOrWhiteSpace(settings.Groq.ApiKey))
         {
-            _trayService.ShowBalloon("Scriptly is running",
+            _trayService.ShowBalloon("Spark is running",
                 "Open Settings to add your AI API key. Then select text and press Ctrl+Shift+Space.");
         }
         else
         {
-            _trayService.ShowBalloon("Scriptly is running",
+            _trayService.ShowBalloon("Spark is running",
                 $"Select text anywhere and press {settings.HotkeyModifiers}+{settings.HotkeyKey}");
         }
 
         if (!string.IsNullOrWhiteSpace(_settingsService.LastRecoveryMessage))
         {
-            _trayService.ShowBalloon("Scriptly settings recovered", _settingsService.LastRecoveryMessage!);
+            _trayService.ShowBalloon("Spark settings recovered", _settingsService.LastRecoveryMessage!);
         }
 
         _ = CheckForUpdatesAsync(showUpToDateBalloon: false);
@@ -179,7 +179,7 @@ public partial class App : Application
             {
                 _lastNotifiedUpdateVersion = info.LatestVersion;
                 _trayService.ShowBalloon(
-                    "Scriptly update available",
+                    "Spark update available",
                     $"Version {info.LatestVersion} is available. Right-click tray icon and open Updates.");
             }
         }
@@ -189,7 +189,7 @@ public partial class App : Application
 
             if (showUpToDateBalloon)
             {
-                _trayService.ShowBalloon("Scriptly", "You are already on the latest version.");
+                _trayService.ShowBalloon("Spark", "You are already on the latest version.");
             }
         }
     }
@@ -240,7 +240,7 @@ public partial class App : Application
                         ? _captureDiagnostics.GetDetailedDiagnostics()
                         : _textCapture.GetFailureDiagnosticSummary();
                     _trayService?.ShowBalloon(
-                        "Scriptly",
+                        "Spark",
                         $"Hotkey detected, but no text was captured. Select text and try again. {details}",
                         System.Windows.Forms.ToolTipIcon.Warning);
                 }
@@ -289,7 +289,7 @@ public partial class App : Application
                 // Re-register hotkey on save; warn if the new combo is already taken
                 bool ok = _hotkeyService?.Register(settings.HotkeyModifiers, settings.HotkeyKey) ?? false;
                 if (!ok)
-                    _trayService?.ShowBalloon("Scriptly — Hotkey conflict",
+                    _trayService?.ShowBalloon("Spark — Hotkey conflict",
                         $"Could not register {settings.HotkeyModifiers}+{settings.HotkeyKey}. " +
                         "Another app may be using it. Try a different shortcut.",
                         System.Windows.Forms.ToolTipIcon.Warning);

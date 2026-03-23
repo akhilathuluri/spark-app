@@ -3,7 +3,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 /// <summary>
 /// Developer-only analytics via PostHog.
@@ -183,7 +183,7 @@ public sealed class AnalyticsService : IDisposable
         {
             var dir  = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "Scriptly");
+                "Spark");
             var path = Path.Combine(dir, "device_id");
             Directory.CreateDirectory(dir);
 

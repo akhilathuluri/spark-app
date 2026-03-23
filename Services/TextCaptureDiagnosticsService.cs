@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
-using Scriptly.Models;
+using Spark.Models;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 /// <summary>
 /// Analyzes text capture failures and provides app-specific diagnostics and recommendations.

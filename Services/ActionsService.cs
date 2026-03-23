@@ -1,6 +1,6 @@
-using Scriptly.Models;
+using Spark.Models;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 public class ActionsService
 {

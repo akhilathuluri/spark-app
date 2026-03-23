@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Text.Json.Serialization;
 
-namespace Scriptly.Models;
+namespace Spark.Models;
 
 public class AppSettings
 {

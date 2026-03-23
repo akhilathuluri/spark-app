@@ -1,14 +1,14 @@
-using Scriptly.Services;
+using Spark.Services;
 using Xunit;
 
-namespace Scriptly.Tests.Unit;
+namespace Spark.Tests.Unit;
 
 public class ActionsServiceTests
 {
     [Fact]
     public void GetSmartSuggestions_PrioritizesCodeActions_ForCodeText()
     {
-        var settingsPath = Path.Combine(Path.GetTempPath(), $"scriptly-test-{Guid.NewGuid()}", "settings.json");
+        var settingsPath = Path.Combine(Path.GetTempPath(), $"Spark-test-{Guid.NewGuid()}", "settings.json");
         var settingsService = new SettingsService(settingsPath, new InMemorySecretStore());
         var sut = new ActionsService(settingsService);
 

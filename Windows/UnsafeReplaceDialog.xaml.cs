@@ -1,8 +1,8 @@
 using System.Windows;
 using System.Windows.Input;
-using Scriptly.Services;
+using Spark.Services;
 
-namespace Scriptly.Windows;
+namespace Spark.Windows;
 
 public enum UnsafeReplaceDecision
 {

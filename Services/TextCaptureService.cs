@@ -1,9 +1,9 @@
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
-using Scriptly.Models;
+using Spark.Models;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 /// <summary>
 /// Captures selected text from any foreground application using several copy
@@ -13,7 +13,7 @@ namespace Scriptly.Services;
 public class TextCaptureService
 {
     private static readonly bool CaptureDiagnosticsEnabled =
-        !string.Equals(Environment.GetEnvironmentVariable("SCRIPTLY_CAPTURE_DIAGNOSTICS"), "0", StringComparison.OrdinalIgnoreCase);
+        !string.Equals(Environment.GetEnvironmentVariable("Spark_CAPTURE_DIAGNOSTICS"), "0", StringComparison.OrdinalIgnoreCase);
 
     public CaptureDiagnostics LastDiagnostics { get; private set; } = new();
     public TextSelectionContext? LastSelectionContext { get; private set; }

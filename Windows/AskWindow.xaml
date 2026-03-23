@@ -1,4 +1,4 @@
-<Window x:Class="Scriptly.Windows.AskWindow"
+<Window x:Class="Spark.Windows.AskWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Ask AI"

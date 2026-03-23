@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 /// <summary>
 /// Async wrapper around DiffService for computing large diffs on a background thread.

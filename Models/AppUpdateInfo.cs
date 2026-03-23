@@ -1,9 +1,9 @@
-namespace Scriptly.Models;
+namespace Spark.Models;
 
 public sealed class AppUpdateInfo
 {
-    public string AppId { get; init; } = "scriptly";
-    public string AppName { get; init; } = "Scriptly";
+    public string AppId { get; init; } = "Spark";
+    public string AppName { get; init; } = "Spark";
     public string CurrentVersion { get; init; } = "0.0.0";
     public string LatestVersion { get; init; } = "0.0.0";
     public string MinimumVersion { get; init; } = "0.0.0";

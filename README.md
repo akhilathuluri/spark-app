@@ -1,4 +1,4 @@
-# Scriptly
+# Spark
 A native Windows desktop app that transforms selected text with AI — from any application, without breaking your flow.
 Select text anywhere → press the hotkey → choose an action → get the result in seconds.
 
@@ -13,7 +13,7 @@ Select text anywhere → press the hotkey → choose an action → get the resul
 5. The AI result appears in a result window
 6. Click **Replace** to swap the original text in-place, or **Copy** to grab it
 
-Scriptly lives entirely in the system tray — no taskbar entry, no open windows when idle.
+Spark lives entirely in the system tray — no taskbar entry, no open windows when idle.
 
 ---
 
@@ -44,8 +44,8 @@ Scriptly lives entirely in the system tray — no taskbar entry, no open windows
 ### 1. Clone and build
 
 ```bash
-git clone https://github.com/your-username/scriptly.git
-cd scriptly/Scriptly
+git clone https://github.com/your-username/Spark.git
+cd Spark/Spark
 dotnet build -c Release
 ```
 
@@ -54,7 +54,7 @@ dotnet build -c Release
 ```bash
 dotnet run
 # or after build:
-.\bin\Release\net10.0-windows\Scriptly.exe
+.\bin\Release\net10.0-windows\Spark.exe
 ```
 
 The app starts silently in the system tray (look for the **S** icon near the clock).
@@ -145,23 +145,23 @@ Right-click the tray icon → **Settings**
 
 Settings are stored as JSON at:
 
-```\n%AppData%\Scriptly\settings.json
+```\n%AppData%\Spark\settings.json
 ```
 
 You can edit this file directly if needed. Delete it to reset to defaults.
 
 ## Logs
 
-Scriptly writes debug logs to:
+Spark writes debug logs to:
 
-```\n%AppData%\Scriptly\debug.log
+```\n%AppData%\Spark\debug.log
 ```
 
 Capture diagnostics logs (`[CAPTURE] ...`) are enabled by default for public builds.
-To disable capture diagnostics, set this environment variable before launching Scriptly:
+To disable capture diagnostics, set this environment variable before launching Spark:
 
 ```powershell
-$env:SCRIPTLY_CAPTURE_DIAGNOSTICS = "0"
+$env:Spark_CAPTURE_DIAGNOSTICS = "0"
 ```
 
 ---
@@ -169,14 +169,14 @@ $env:SCRIPTLY_CAPTURE_DIAGNOSTICS = "0"
 ## Project Structure
 
 ```
-Scriptly/
+Spark/
 ├── Models/
 │   └── AppSettings.cs          # AppSettings, OpenRouterSettings, GroqSettings, CustomAction, ActionItem
 ├── Services/
 │   ├── AiService.cs            # OpenRouter + Groq API calls
 │   ├── ActionsService.cs       # Built-in actions + smart ordering + custom actions
 │   ├── GlobalHotkeyService.cs  # Win32 RegisterHotKey via WndProc hook
-│   ├── SettingsService.cs      # JSON load/save to %AppData%\Scriptly
+│   ├── SettingsService.cs      # JSON load/save to %AppData%\Spark
 │   ├── TextCaptureService.cs   # Ctrl+C capture + Ctrl+V replace via SendInput
 │   └── TrayService.cs          # System tray icon (WinForms NotifyIcon)
 ├── Windows/
@@ -188,7 +188,7 @@ Scriptly/
 ├── App.xaml / App.xaml.cs      # Entry point, service wiring, hotkey handler
 ├── GlobalUsings.cs             # WPF/WinForms namespace alias resolution
 ├── app.manifest                # PerMonitorV2 DPI awareness declaration
-└── Scriptly.csproj             # .NET 10, WPF + WinForms, Microsoft.Extensions.Http
+└── Spark.csproj             # .NET 10, WPF + WinForms, Microsoft.Extensions.Http
 ```
 
 ---
@@ -203,14 +203,14 @@ Scriptly/
 | Text Capture | Win32 `SendInput` (Ctrl+C / Ctrl+V) |
 | AI Requests | `HttpClient` via `Microsoft.Extensions.Http` |
 | Animations | WPF `DoubleAnimation` + `CubicEase` + `BitmapCache` (GPU) |
-| Settings | `System.Text.Json` → `%AppData%\Scriptly\settings.json` |
+| Settings | `System.Text.Json` → `%AppData%\Spark\settings.json` |
 | DPI | Per-monitor v2 via `app.manifest` |
 
 ---
 
 ## Known Limitations
 
-- **Elevated (admin) apps** — Scriptly cannot send keystrokes to apps running as administrator (e.g. Task Manager) unless Scriptly itself is also run as admin. This is a Windows UIPI restriction.
+- **Elevated (admin) apps** — Spark cannot send keystrokes to apps running as administrator (e.g. Task Manager) unless Spark itself is also run as admin. This is a Windows UIPI restriction.
 - **Some apps intercept Ctrl+C** — terminal emulators or apps with custom keyboard handling may not copy to the clipboard on Ctrl+C.
 - **Replace only works if text is still selected** — if the source app loses its selection before the result window closes, Replace will paste at the cursor instead.
 

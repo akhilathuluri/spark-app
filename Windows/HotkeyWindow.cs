@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace Scriptly.Windows;
+namespace Spark.Windows;
 
 /// <summary>
 /// An invisible window used solely as a message pump target

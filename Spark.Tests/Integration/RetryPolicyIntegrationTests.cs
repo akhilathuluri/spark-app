@@ -1,8 +1,8 @@
 using System.Net;
-using Scriptly.Services;
+using Spark.Services;
 using Xunit;
 
-namespace Scriptly.Tests.Integration;
+namespace Spark.Tests.Integration;
 
 public class RetryPolicyIntegrationTests
 {

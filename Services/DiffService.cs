@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 public enum DiffType { Equal, Delete, Insert }
 

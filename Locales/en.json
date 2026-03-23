@@ -16,7 +16,7 @@
   "settings.modifiers": "Modifiers (e.g. Ctrl+Shift)",
   "settings.key": "Key (e.g. Space)",
   "settings.general": "GENERAL",
-  "settings.startWithWindows": "Start Scriptly automatically when Windows starts",
+  "settings.startWithWindows": "Start Spark automatically when Windows starts",
   "settings.safeReplacePreview": "Enable safe replace preview confirmation",
   "settings.enableDiagnostics": "Enable diagnostic bundle generation (opt-in)",
   "settings.customActions": "CUSTOM ACTIONS",

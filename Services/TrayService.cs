@@ -1,7 +1,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 /// <summary>
 /// Manages the system tray icon and its context menu.
@@ -28,7 +28,7 @@ public class TrayService : IDisposable
         _contextMenu.Font = new Font("Segoe UI", 9.5f);
         _contextMenu.RenderMode = ToolStripRenderMode.System;
 
-        var titleItem = new ToolStripMenuItem("Scriptly")
+        var titleItem = new ToolStripMenuItem("Spark")
         {
             Enabled = false,
             Font = new Font("Segoe UI", 9.5f, System.Drawing.FontStyle.Bold)
@@ -76,7 +76,7 @@ public class TrayService : IDisposable
 
         _notifyIcon = new NotifyIcon
         {
-            Text = "Scriptly — Select text and press Ctrl+Shift+Space",
+            Text = "Spark — Select text and press Ctrl+Shift+Space",
             Visible = true,
             ContextMenuStrip = _contextMenu,
             Icon = _iconService.CreateAppTrayIcon()

@@ -3,10 +3,10 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
 using System.Windows.Interop;
-using Scriptly.Models;
-using Scriptly.Services;
+using Spark.Models;
+using Spark.Services;
 
-namespace Scriptly.Windows;
+namespace Spark.Windows;
 
 public partial class FullEditorWindow : Window
 {
@@ -85,9 +85,9 @@ public partial class FullEditorWindow : Window
         var text = ResultTextBox.Text;
         var validation = _textCapture.ValidateReplaceTarget();
         bool forceReplace = false;
-        bool isScriptlyForeground = validation.CurrentProcessName.Equals("Scriptly", StringComparison.OrdinalIgnoreCase);
+        bool isSparkForeground = validation.CurrentProcessName.Equals("Spark", StringComparison.OrdinalIgnoreCase);
 
-        if (!validation.IsSafe && !isScriptlyForeground && ReplacePromptPreferenceService.ShouldShowUnsafePrompt())
+        if (!validation.IsSafe && !isSparkForeground && ReplacePromptPreferenceService.ShouldShowUnsafePrompt())
         {
             var dialog = new UnsafeReplaceDialog(
                 validation.SourceProcessName,
@@ -112,7 +112,7 @@ public partial class FullEditorWindow : Window
 
             forceReplace = true;
         }
-        else if (!validation.IsSafe && !isScriptlyForeground && !ReplacePromptPreferenceService.ShouldShowUnsafePrompt())
+        else if (!validation.IsSafe && !isSparkForeground && !ReplacePromptPreferenceService.ShouldShowUnsafePrompt())
         {
             forceReplace = true;
         }

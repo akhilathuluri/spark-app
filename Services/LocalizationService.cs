@@ -1,7 +1,7 @@
 using System.IO;
 using System.Text.Json;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 public class LocalizationService
 {

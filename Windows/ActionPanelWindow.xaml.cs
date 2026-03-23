@@ -3,12 +3,12 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using Scriptly.Models;
-using Scriptly.Services;
+using Spark.Models;
+using Spark.Services;
 using System.Windows.Markup;
 using System.Windows.Data;
 
-namespace Scriptly.Windows;
+namespace Spark.Windows;
 
 // Converter for showing shortcut badge only when not empty
 [ValueConversion(typeof(string), typeof(Visibility))]

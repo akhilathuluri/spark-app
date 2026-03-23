@@ -1,8 +1,8 @@
 using System.IO;
 using System.Text.Json;
-using Scriptly.Models;
+using Spark.Models;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 /// <summary>
 /// Maintains the last N processed results in memory and on disk.
@@ -14,7 +14,7 @@ public class HistoryService
 
     private static readonly string HistoryPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Scriptly", "history.json");
+        "Spark", "history.json");
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

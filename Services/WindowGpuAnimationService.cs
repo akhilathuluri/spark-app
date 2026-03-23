@@ -2,7 +2,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 public static class WindowGpuAnimationService
 {

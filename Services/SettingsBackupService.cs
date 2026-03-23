@@ -1,8 +1,8 @@
 using System.IO;
 using System.Text.Json;
-using Scriptly.Models;
+using Spark.Models;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 /// <summary>
 /// Auto-creates and manages backups of settings.json to prevent total data loss from corruption.
@@ -11,7 +11,7 @@ namespace Scriptly.Services;
 /// 
 /// Backup strategy:
 ///  - Creates numbered backup files (settings.backup.1.json, settings.backup.2.json, etc.)
-///  - Keeps up to 5 backups (configurable via env var SCRIPTLY_BACKUP_COUNT)
+///  - Keeps up to 5 backups (configurable via env var Spark_BACKUP_COUNT)
 ///  - On each save, rotates backups (new backup = highest number)
 ///  - On corruption detection, can restore from newest valid backup
 /// </summary>
@@ -30,7 +30,7 @@ public class SettingsBackupService
         _settingsPath = settingsPath;
 
         int backupCount = 5;
-        if (int.TryParse(Environment.GetEnvironmentVariable("SCRIPTLY_BACKUP_COUNT"), out var count))
+        if (int.TryParse(Environment.GetEnvironmentVariable("Spark_BACKUP_COUNT"), out var count))
         {
             backupCount = Math.Clamp(count, 2, 20);
         }

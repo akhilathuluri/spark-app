@@ -14,7 +14,7 @@ This matrix tracks real-world capture reliability by app type and fallback strat
 
 ## Failure Diagnostics
 
-When capture fails, Scriptly now reports:
+When capture fails, Spark now reports:
 - Foreground process name
 - Detected app type
 - Last strategy used

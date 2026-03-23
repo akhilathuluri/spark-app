@@ -1,6 +1,6 @@
 ﻿using System.Windows;
 
-namespace Scriptly;
+namespace Spark;
 
 public partial class MainWindow : Window
 {

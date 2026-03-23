@@ -1,10 +1,10 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
-using Scriptly.Models;
-using Scriptly.Services;
+using Spark.Models;
+using Spark.Services;
 
-namespace Scriptly.Windows;
+namespace Spark.Windows;
 
 public partial class AskWindow : Window
 {

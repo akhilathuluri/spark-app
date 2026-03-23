@@ -1,8 +1,8 @@
-<Window x:Class="Scriptly.Windows.MoreInfoWindow"
+<Window x:Class="Spark.Windows.MoreInfoWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
-        Title="Scriptly More Info"
+        Title="Spark More Info"
         Width="500" Height="470"
         WindowStyle="None"
         AllowsTransparency="True"
@@ -127,7 +127,7 @@
             </ScrollViewer>
 
             <Border Grid.Row="2" Padding="20,10,20,16">
-                <TextBlock Text="Help us improve Scriptly with your ideas and bug reports."
+                <TextBlock Text="Help us improve Spark with your ideas and bug reports."
                            FontSize="11" Foreground="#3E3E66" HorizontalAlignment="Center"/>
             </Border>
         </Grid>

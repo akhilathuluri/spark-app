@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 /// <summary>
 /// Stores secrets encrypted with Windows DPAPI (CurrentUser scope).
@@ -12,7 +12,7 @@ public sealed class DpapiSecretStore : ISecretStore
 {
     private static readonly string StorePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Scriptly", "secrets.dat");
+        "Spark", "secrets.dat");
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -20,7 +20,7 @@ public sealed class DpapiSecretStore : ISecretStore
         PropertyNameCaseInsensitive = true
     };
 
-    private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("Scriptly.Secrets.v1");
+    private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("Spark.Secrets.v1");
     private readonly object _sync = new();
 
     public string? Get(string key)

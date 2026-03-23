@@ -3,10 +3,10 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
 using System.Runtime.InteropServices;
-using Scriptly.Models;
-using Scriptly.Services;
+using Spark.Models;
+using Spark.Services;
 
-namespace Scriptly.Windows;
+namespace Spark.Windows;
 
 public partial class SettingsWindow : Window
 {
@@ -65,7 +65,7 @@ public partial class SettingsWindow : Window
 
         // Version
         var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-        VersionLabel.Text = $"Scriptly v{v?.Major}.{v?.Minor}.{v?.Build ?? 0}";
+        VersionLabel.Text = $"Spark v{v?.Major}.{v?.Minor}.{v?.Build ?? 0}";
 
         // Custom actions
         RefreshCustomActions();
@@ -180,7 +180,7 @@ public partial class SettingsWindow : Window
     private void ReleasesButton_Click(object sender, RoutedEventArgs e)
     {
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
-            "https://github.com/scriptly-app/scriptly/releases")
+            "https://github.com/Spark-app/Spark/releases")
             { UseShellExecute = true });
     }
 
@@ -282,7 +282,7 @@ public partial class SettingsWindow : Window
         ModifiersLabelText.Text = _loc.T("settings.modifiers", "Modifiers (e.g. Ctrl+Shift)");
         KeyLabelText.Text = _loc.T("settings.key", "Key (e.g. Space)");
         GeneralHeaderText.Text = _loc.T("settings.general", "GENERAL");
-        StartWithWindowsCheck.Content = _loc.T("settings.startWithWindows", "Start Scriptly automatically when Windows starts");
+        StartWithWindowsCheck.Content = _loc.T("settings.startWithWindows", "Start Spark automatically when Windows starts");
         SafeReplacePreviewCheck.Content = _loc.T("settings.safeReplacePreview", "Enable safe replace preview confirmation");
         EnableDiagnosticsBundleCheck.Content = _loc.T("settings.enableDiagnostics", "Enable diagnostic bundle generation (opt-in)");
         CustomActionsHeaderText.Text = _loc.T("settings.customActions", "CUSTOM ACTIONS");

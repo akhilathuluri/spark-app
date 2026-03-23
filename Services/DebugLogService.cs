@@ -1,23 +1,23 @@
 using System.IO;
 using System.Text.Json;
-using Scriptly.Models;
+using Spark.Models;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 /// <summary>
 /// Simple file-based logging for debugging errors and issues.
-/// Logs to %APPDATA%\Scriptly\debug.log — used only for troubleshooting, never shown to users.
+/// Logs to %APPDATA%\Spark\debug.log — used only for troubleshooting, never shown to users.
 /// Thread-safe via lock; logs are silently dropped if file write fails.
 /// </summary>
 public static class DebugLogService
 {
     private static readonly string LogPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Scriptly", "debug.log");
+        "Spark", "debug.log");
 
     private static readonly string DiagnosticPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Scriptly", "diagnostics.jsonl");
+        "Spark", "diagnostics.jsonl");
 
     private static readonly object _lock = new();
 

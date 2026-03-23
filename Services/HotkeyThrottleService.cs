@@ -1,4 +1,4 @@
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 /// <summary>
 /// Rate-limits hotkey presses to prevent window spam.
@@ -14,7 +14,7 @@ public class HotkeyThrottleService
     /// <summary>
     /// Debounce interval in milliseconds. Default 500ms — prevents rapid successive presses
     /// from spawning multiple action panel windows.
-    /// Can be configured via environment variable SCRIPTLY_HOTKEY_THROTTLE_MS.
+    /// Can be configured via environment variable Spark_HOTKEY_THROTTLE_MS.
     /// Clamped to [100ms, 2000ms] to prevent edge cases.
     /// </summary>
     public int ThrottleTimeMs { get; private set; } = 500;
@@ -27,7 +27,7 @@ public class HotkeyThrottleService
     public HotkeyThrottleService()
     {
         // Read optional env var override
-        if (int.TryParse(Environment.GetEnvironmentVariable("SCRIPTLY_HOTKEY_THROTTLE_MS"), out var ms))
+        if (int.TryParse(Environment.GetEnvironmentVariable("Spark_HOTKEY_THROTTLE_MS"), out var ms))
         {
             ThrottleTimeMs = Math.Clamp(ms, 100, 2000);
             DebugLogService.LogMessage($"HotkeyThrottleService: throttle time set to {ThrottleTimeMs}ms from env var");

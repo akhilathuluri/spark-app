@@ -1,6 +1,6 @@
 using Microsoft.Win32;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 /// <summary>
 /// Manages the Windows "Start with login" registry entry under
@@ -9,7 +9,7 @@ namespace Scriptly.Services;
 /// </summary>
 public static class StartupService
 {
-    private const string AppName  = "Scriptly";
+    private const string AppName  = "Spark";
     private const string RunKey   = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
 
     /// <summary>Returns true if the run-on-login registry value currently exists.</summary>

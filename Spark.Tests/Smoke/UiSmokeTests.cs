@@ -1,6 +1,6 @@
 using Xunit;
 
-namespace Scriptly.Tests.Smoke;
+namespace Spark.Tests.Smoke;
 
 public class UiSmokeTests
 {

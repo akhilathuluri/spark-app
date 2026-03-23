@@ -1,14 +1,14 @@
 using System.IO;
 using System.Text.Json;
-using Scriptly.Models;
+using Spark.Models;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 public class SettingsService
 {
     private static readonly string DefaultSettingsPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Scriptly", "settings.json");
+        "Spark", "settings.json");
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

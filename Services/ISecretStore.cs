@@ -1,4 +1,4 @@
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 /// <summary>
 /// Abstraction for storing sensitive values outside regular settings payloads.

@@ -1,8 +1,8 @@
-<Window x:Class="Scriptly.Windows.ActionPanelWindow"
+<Window x:Class="Spark.Windows.ActionPanelWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="clr-namespace:Scriptly.Windows"
-        Title="Scriptly Actions"
+        xmlns:local="clr-namespace:Spark.Windows"
+        Title="Spark Actions"
         Width="320"
         Height="420"
         WindowStyle="None"
@@ -132,7 +132,7 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="Scriptly" FontSize="13" FontWeight="SemiBold"
+                    <TextBlock Text="Spark" FontSize="13" FontWeight="SemiBold"
                                Foreground="#6C6C8A" VerticalAlignment="Center"/>
                     <TextBlock x:Name="ProviderLabel" Grid.Column="1"
                                FontSize="11" Foreground="#4A4A6A"

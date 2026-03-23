@@ -1,15 +1,15 @@
 using System.Text.Json;
-using Scriptly.Services;
+using Spark.Services;
 using Xunit;
 
-namespace Scriptly.Tests.Unit;
+namespace Spark.Tests.Unit;
 
 public class SettingsMigrationTests
 {
     [Fact]
     public void Load_MigratesPlaintextApiKeys_ToSecretStore()
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), $"scriptly-test-{Guid.NewGuid()}");
+        var tempDir = Path.Combine(Path.GetTempPath(), $"Spark-test-{Guid.NewGuid()}");
         Directory.CreateDirectory(tempDir);
         var settingsPath = Path.Combine(tempDir, "settings.json");
 

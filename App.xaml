@@ -1,7 +1,7 @@
-﻿<Application x:Class="Scriptly.App"
+﻿<Application x:Class="Spark.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:Scriptly"
+             xmlns:local="clr-namespace:Spark"
              ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
          

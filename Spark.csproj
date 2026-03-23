@@ -10,8 +10,8 @@
     <UseWindowsForms>true</UseWindowsForms>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <RootNamespace>Scriptly</RootNamespace>
-    <AssemblyName>Scriptly</AssemblyName>
+    <RootNamespace>Spark</RootNamespace>
+    <AssemblyName>Spark</AssemblyName>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <NoWarn>$(NoWarn);WFO0003;NU1510</NoWarn>
     <Version>1.0.0</Version>
@@ -25,10 +25,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Scriptly.Tests\**\*.cs" />
-    <EmbeddedResource Remove="Scriptly.Tests\**\*" />
-    <None Remove="Scriptly.Tests\**\*" />
-    <Page Remove="Scriptly.Tests\**\*" />
+    <Compile Remove="Spark.Tests\**\*.cs" />
+    <EmbeddedResource Remove="Spark.Tests\**\*" />
+    <None Remove="Spark.Tests\**\*" />
+    <Page Remove="Spark.Tests\**\*" />
   </ItemGroup>
 
   <ItemGroup>

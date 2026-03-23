@@ -1,4 +1,4 @@
-<Window x:Class="Scriptly.Windows.UnsafeReplaceDialog"
+<Window x:Class="Spark.Windows.UnsafeReplaceDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Unsafe Replace Detected"

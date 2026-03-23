@@ -1,4 +1,4 @@
-namespace Scriptly.Models;
+namespace Spark.Models;
 
 public class ReplaceValidationResult
 {

@@ -1,7 +1,7 @@
 using System.Net.Http;
 using Polly;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 /// <summary>
 /// Provides retry policies for resilient HTTP requests.

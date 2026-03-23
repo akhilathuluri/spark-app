@@ -1,9 +1,9 @@
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Scriptly.Models;
+using Spark.Models;
 
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 public sealed class UpdateNotificationService : IDisposable
 {
@@ -17,7 +17,7 @@ public sealed class UpdateNotificationService : IDisposable
         _ownsHttpClient = httpClient is null;
         _http = httpClient ?? new HttpClient();
         _baseUrl = string.IsNullOrWhiteSpace(baseUrl)
-            ? Environment.GetEnvironmentVariable("SCRIPTLY_API_BASE_URL") ?? DefaultBaseUrl
+            ? Environment.GetEnvironmentVariable("Spark_API_BASE_URL") ?? DefaultBaseUrl
             : baseUrl;
     }
 
@@ -27,7 +27,7 @@ public sealed class UpdateNotificationService : IDisposable
             _http.Dispose();
     }
 
-    public async Task<AppUpdateInfo?> CheckForUpdateAsync(string appId = "scriptly", CancellationToken cancellationToken = default)
+    public async Task<AppUpdateInfo?> CheckForUpdateAsync(string appId = "Spark", CancellationToken cancellationToken = default)
     {
         try
         {

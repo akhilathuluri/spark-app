@@ -1,4 +1,4 @@
-namespace Scriptly.Services;
+namespace Spark.Services;
 
 /// <summary>
 /// Stores in-memory unsafe replace prompt preferences for the current app session.
