@@ -377,7 +377,7 @@
 
                     <Border Background="#1A1A28" CornerRadius="8" Padding="12,10" Margin="0,0,0,12">
                         <CheckBox x:Name="EnableDiagnosticsBundleCheck"
-                                  Content="Enable diagnostic bundle generation (opt-in)"
+                                  Content="Enable diagnostic bundle generation"
                                   Foreground="#B0B0C8" FontSize="13" Cursor="Hand"/>
                     </Border>
 

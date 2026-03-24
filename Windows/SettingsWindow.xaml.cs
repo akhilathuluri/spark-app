@@ -284,7 +284,7 @@ public partial class SettingsWindow : Window
         GeneralHeaderText.Text = _loc.T("settings.general", "GENERAL");
         StartWithWindowsCheck.Content = _loc.T("settings.startWithWindows", "Start Spark automatically when Windows starts");
         SafeReplacePreviewCheck.Content = _loc.T("settings.safeReplacePreview", "Enable safe replace preview confirmation");
-        EnableDiagnosticsBundleCheck.Content = _loc.T("settings.enableDiagnostics", "Enable diagnostic bundle generation (opt-in)");
+        EnableDiagnosticsBundleCheck.Content = _loc.T("settings.enableDiagnostics", "Enable diagnostic bundle generation");
         CustomActionsHeaderText.Text = _loc.T("settings.customActions", "CUSTOM ACTIONS");
         NewActionButton.Content = _loc.T("settings.newAction", "+ New Action");
         RecordHotkeyButton.Content = _loc.T("settings.recordShortcut", "Record Shortcut");

@@ -18,7 +18,7 @@
   "settings.general": "GENERAL",
   "settings.startWithWindows": "Start Spark automatically when Windows starts",
   "settings.safeReplacePreview": "Enable safe replace preview confirmation",
-  "settings.enableDiagnostics": "Enable diagnostic bundle generation (opt-in)",
+  "settings.enableDiagnostics": "Enable diagnostic bundle generation",
   "settings.customActions": "CUSTOM ACTIONS",
   "settings.newAction": "+ New Action",
   "settings.saved": "✓ Settings saved",

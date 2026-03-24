@@ -18,7 +18,7 @@
   "settings.general": "GENERAL",
   "settings.startWithWindows": "Iniciar Spark automaticamente con Windows",
   "settings.safeReplacePreview": "Activar confirmacion de vista previa para reemplazo seguro",
-  "settings.enableDiagnostics": "Activar generacion de paquetes de diagnostico (opcional)",
+  "settings.enableDiagnostics": "Activar generacion de paquetes de diagnostico",
   "settings.customActions": "ACCIONES PERSONALIZADAS",
   "settings.newAction": "+ Nueva accion",
   "settings.saved": "✓ Configuracion guardada",
