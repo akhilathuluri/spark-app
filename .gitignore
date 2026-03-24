@@ -50,3 +50,7 @@ coverage/
 appsettings.json
 
 commands.txt
+
+SparkInstaller.exe
+SparkInstaller-win-x64.exe
+SparkInstaller-win-arm64.exe

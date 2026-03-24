@@ -1,0 +1,47 @@
+SPARK - END USER LICENSE AGREEMENT
+
+Last Updated: March 2026
+
+This End User License Agreement ("Agreement") is entered into between you ("Licensee" or "you") 
+and Spark Development Team ("Licensor" or "we").
+
+1. GRANT OF LICENSE
+Licensor grants you a non-exclusive, non-transferable license to use this software ("Spark") 
+on any number of computers where you have admin rights, for personal or commercial use.
+
+2. RESTRICTIONS
+You may not:
+- Modify, reverse engineer, decompile, or disassemble the software
+- Rent, lease, or lend the software
+- Remove or alter any proprietary notices or labels
+- Use the software for unlawful purposes
+
+3. INTELLECTUAL PROPERTY
+The software is licensed, not sold. All intellectual property rights remain with the Licensor.
+The software is protected by copyright and other intellectual property laws.
+
+4. DISCLAIMER OF WARRANTIES
+THE SOFTWARE IS PROVIDED "AS-IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, 
+AND NON-INFRINGEMENT. LICENSOR DOES NOT WARRANT THAT THE SOFTWARE WILL MEET YOUR REQUIREMENTS 
+OR THAT OPERATION WILL BE UNINTERRUPTED OR ERROR-FREE.
+
+5. LIMITATION OF LIABILITY
+IN NO EVENT SHALL LICENSOR BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, 
+OR PUNITIVE DAMAGES ARISING OUT OF OR IN CONNECTION WITH THIS AGREEMENT OR THE USE OF THE SOFTWARE, 
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+6. TERMINATION
+This Agreement is effective until terminated. Your rights terminate automatically if you violate 
+any term of this Agreement.
+
+7. GOVERNING LAW
+This Agreement shall be governed by and construed in accordance with the laws of the jurisdiction 
+in which the Licensor resides, without regard to its conflict laws.
+
+8. ENTIRE AGREEMENT
+This Agreement constitutes the entire agreement between you and Licensor regarding the software 
+and supersedes all prior negotiations, representations, and agreements.
+
+By installing this software, you acknowledge that you have read, understood, and agree to be bound 
+by the terms and conditions of this Agreement.
