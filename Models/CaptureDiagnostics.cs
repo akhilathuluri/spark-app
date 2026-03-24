@@ -8,4 +8,5 @@ public class CaptureDiagnostics
     public bool UsedUiAutomationFallback { get; set; } = false;
     public bool Success { get; set; } = false;
     public int Attempts { get; set; } = 0;
+    public string LastFailureReason { get; set; } = string.Empty;
 }

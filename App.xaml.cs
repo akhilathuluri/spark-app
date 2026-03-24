@@ -231,6 +231,16 @@ public partial class App : Application
                     _captureDiagnostics.RecordFailure(_textCapture!.LastDiagnostics, _textCapture!.LastSelectionContext);
                 }
 
+                if (_diagnosticsService != null)
+                {
+                    var captureCid = _diagnosticsService.NewCorrelationId();
+                    _diagnosticsService.ReportCaptureFailure(
+                        "OnHotkeyPressed.Capture",
+                        captureCid,
+                        _textCapture!.LastDiagnostics,
+                        _textCapture!.LastSelectionContext);
+                }
+
                 // Avoid silent no-op behavior; show a throttled hint to the user.
                 var now = DateTime.UtcNow;
                 if ((now - _lastNoTextCapturedNoticeUtc).TotalSeconds > 5)

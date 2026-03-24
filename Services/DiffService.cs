@@ -18,8 +18,9 @@ public static class DiffService
     // Keeping whitespace as tokens means spacing is preserved faithfully in the render.
     private static readonly Regex TokenRe = new(@"\w+|[^\w\s]+|\s+", RegexOptions.Compiled);
 
-    // Bail-out guard: LCS is O(n*m) — cap to avoid freezing on very long text.
-    private const int MaxTokens = 500;
+    // Bail-out guards: LCS is O(n*m) — cap to avoid freezing on very long text.
+    private static readonly int MaxTokens = ReadInt("Spark_DIFF_MAX_TOKENS", 500, 120, 4000);
+    private static readonly int MaxMatrixCells = ReadInt("Spark_DIFF_MAX_MATRIX_CELLS", 200_000, 25_000, 2_000_000);
 
     private static string[] Tokenize(string text) =>
         TokenRe.Matches(text).Select(m => m.Value).ToArray();
@@ -37,13 +38,51 @@ public static class DiffService
         var a = Tokenize(original);
         var b = Tokenize(result);
 
-        // Fallback for very long texts: treat as a single delete + insert
-        if (a.Length > MaxTokens || b.Length > MaxTokens)
-            return [new DiffChunk(DiffType.Delete, original),
-                    new DiffChunk(DiffType.Insert, result)];
+        // Fallback for long texts: fast prefix/suffix diff avoids O(n*m) matrix costs.
+        if (a.Length > MaxTokens || b.Length > MaxTokens || ((long)a.Length * b.Length) > MaxMatrixCells)
+            return ComputeFastFallback(original, result);
 
         var dp     = BuildDP(a, b);
         var chunks = Backtrack(a, b, dp);
+        Merge(chunks);
+        return chunks;
+    }
+
+    public static List<DiffChunk> ComputeFastFallback(string original, string result)
+    {
+        if (original == result)
+            return [new DiffChunk(DiffType.Equal, original)];
+
+        var a = Tokenize(original);
+        var b = Tokenize(result);
+
+        int prefix = 0;
+        int maxPrefix = Math.Min(a.Length, b.Length);
+        while (prefix < maxPrefix && a[prefix] == b[prefix])
+            prefix++;
+
+        int aEnd = a.Length - 1;
+        int bEnd = b.Length - 1;
+        while (aEnd >= prefix && bEnd >= prefix && a[aEnd] == b[bEnd])
+        {
+            aEnd--;
+            bEnd--;
+        }
+
+        var chunks = new List<DiffChunk>(4);
+        if (prefix > 0)
+            chunks.Add(new DiffChunk(DiffType.Equal, string.Concat(a.Take(prefix))));
+
+        if (aEnd >= prefix)
+            chunks.Add(new DiffChunk(DiffType.Delete, string.Concat(a.Skip(prefix).Take(aEnd - prefix + 1))));
+
+        if (bEnd >= prefix)
+            chunks.Add(new DiffChunk(DiffType.Insert, string.Concat(b.Skip(prefix).Take(bEnd - prefix + 1))));
+
+        int suffixLen = a.Length - (aEnd + 1);
+        if (suffixLen > 0)
+            chunks.Add(new DiffChunk(DiffType.Equal, string.Concat(a.Skip(aEnd + 1))));
+
         Merge(chunks);
         return chunks;
     }
@@ -97,5 +136,12 @@ public static class DiffService
                 chunks.RemoveAt(i);
             }
         }
+    }
+
+    private static int ReadInt(string name, int fallback, int min, int max)
+    {
+        if (!int.TryParse(Environment.GetEnvironmentVariable(name), out var parsed))
+            return fallback;
+        return Math.Clamp(parsed, min, max);
     }
 }

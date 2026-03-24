@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Linq;
 using Spark.Models;
 
 namespace Spark.Services;
@@ -57,17 +58,7 @@ public class SettingsService
 
         try
         {
-            AppSettings settings;
-            if (File.Exists(_settingsPath))
-            {
-                var json = File.ReadAllText(_settingsPath);
-                settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions)
-                           ?? new AppSettings();
-            }
-            else
-            {
-                settings = new AppSettings();
-            }
+            var settings = LoadFromPrimaryOrBackup(out var restoredFromBackup);
 
             bool migratedFromPlaintext = HydrateSecrets(settings);
             bool migrated = false;
@@ -90,7 +81,16 @@ public class SettingsService
                 Save(settings);
             }
 
-            LastRecoveryMessage = recoveryMessage;
+            if (restoredFromBackup)
+            {
+                LastRecoveryMessage = string.IsNullOrWhiteSpace(recoveryMessage)
+                    ? "Recovered settings from the latest valid backup."
+                    : $"Recovered settings from backup and repaired fields: {recoveryMessage}";
+            }
+            else
+            {
+                LastRecoveryMessage = recoveryMessage;
+            }
 
             return settings;
         }
@@ -100,6 +100,38 @@ public class SettingsService
         }
 
         return new AppSettings();
+    }
+
+    private AppSettings LoadFromPrimaryOrBackup(out bool restoredFromBackup)
+    {
+        restoredFromBackup = false;
+
+        if (!File.Exists(_settingsPath))
+            return new AppSettings();
+
+        try
+        {
+            var json = File.ReadAllText(_settingsPath);
+            return JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
+        }
+        catch (JsonException ex)
+        {
+            DebugLogService.LogError("SettingsService.Load.Parse", ex);
+
+            if (_backupService == null)
+                return new AppSettings();
+
+            var restore = _backupService.TryRestoreFromBackup();
+            if (!restore.Success)
+            {
+                DebugLogService.LogMessage($"SettingsService.Load: backup restore failed - {restore.ErrorDetails}");
+                return new AppSettings();
+            }
+
+            restoredFromBackup = true;
+            var restoredJson = File.ReadAllText(_settingsPath);
+            return JsonSerializer.Deserialize<AppSettings>(restoredJson, JsonOptions) ?? new AppSettings();
+        }
     }
 
     public void Save(AppSettings settings)
@@ -133,26 +165,58 @@ public class SettingsService
     {
         bool migrated = false;
 
-        var openRouterFromStore = _secretStore.Get(OpenRouterApiKeyName);
+        string? openRouterFromStore = null;
+        try
+        {
+            openRouterFromStore = _secretStore.Get(OpenRouterApiKeyName);
+        }
+        catch (Exception ex)
+        {
+            DebugLogService.LogError("SettingsService.HydrateSecrets.OpenRouterGet", ex);
+        }
+
         if (!string.IsNullOrWhiteSpace(openRouterFromStore))
         {
             settings.OpenRouter.ApiKey = openRouterFromStore;
         }
         else if (!string.IsNullOrWhiteSpace(settings.OpenRouter.ApiKey))
         {
-            _secretStore.Set(OpenRouterApiKeyName, settings.OpenRouter.ApiKey);
-            migrated = true;
+            try
+            {
+                _secretStore.Set(OpenRouterApiKeyName, settings.OpenRouter.ApiKey);
+                migrated = true;
+            }
+            catch (Exception ex)
+            {
+                DebugLogService.LogError("SettingsService.HydrateSecrets.OpenRouterSet", ex);
+            }
         }
 
-        var groqFromStore = _secretStore.Get(GroqApiKeyName);
+        string? groqFromStore = null;
+        try
+        {
+            groqFromStore = _secretStore.Get(GroqApiKeyName);
+        }
+        catch (Exception ex)
+        {
+            DebugLogService.LogError("SettingsService.HydrateSecrets.GroqGet", ex);
+        }
+
         if (!string.IsNullOrWhiteSpace(groqFromStore))
         {
             settings.Groq.ApiKey = groqFromStore;
         }
         else if (!string.IsNullOrWhiteSpace(settings.Groq.ApiKey))
         {
-            _secretStore.Set(GroqApiKeyName, settings.Groq.ApiKey);
-            migrated = true;
+            try
+            {
+                _secretStore.Set(GroqApiKeyName, settings.Groq.ApiKey);
+                migrated = true;
+            }
+            catch (Exception ex)
+            {
+                DebugLogService.LogError("SettingsService.HydrateSecrets.GroqSet", ex);
+            }
         }
 
         return migrated;
@@ -161,10 +225,28 @@ public class SettingsService
     private void PersistSecrets(AppSettings settings)
     {
         if (!string.IsNullOrWhiteSpace(settings.OpenRouter.ApiKey))
-            _secretStore.Set(OpenRouterApiKeyName, settings.OpenRouter.ApiKey);
+        {
+            try
+            {
+                _secretStore.Set(OpenRouterApiKeyName, settings.OpenRouter.ApiKey);
+            }
+            catch (Exception ex)
+            {
+                DebugLogService.LogError("SettingsService.PersistSecrets.OpenRouter", ex);
+            }
+        }
 
         if (!string.IsNullOrWhiteSpace(settings.Groq.ApiKey))
-            _secretStore.Set(GroqApiKeyName, settings.Groq.ApiKey);
+        {
+            try
+            {
+                _secretStore.Set(GroqApiKeyName, settings.Groq.ApiKey);
+            }
+            catch (Exception ex)
+            {
+                DebugLogService.LogError("SettingsService.PersistSecrets.Groq", ex);
+            }
+        }
     }
 
     private static AppSettings CloneWithoutSecrets(AppSettings settings)
@@ -224,6 +306,23 @@ public class SettingsService
         }
 
         settings.CustomActions ??= new List<CustomAction>();
+        int beforeCustomCount = settings.CustomActions.Count;
+        settings.CustomActions = settings.CustomActions
+            .Where(a => a != null)
+            .Where(a => !string.IsNullOrWhiteSpace(a.Name) && !string.IsNullOrWhiteSpace(a.Instructions))
+            .Select(a =>
+            {
+                a.Id = a.Id == Guid.Empty ? Guid.NewGuid() : a.Id;
+                a.Icon = string.IsNullOrWhiteSpace(a.Icon) ? "✨" : a.Icon;
+                a.Description ??= string.Empty;
+                return a;
+            })
+            .GroupBy(a => a.Id)
+            .Select(g => g.First())
+            .ToList();
+
+        if (settings.CustomActions.Count != beforeCustomCount)
+            recovered.Add("custom actions");
 
         var language = settings.Language?.Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(language) || (language != "en" && language != "es"))

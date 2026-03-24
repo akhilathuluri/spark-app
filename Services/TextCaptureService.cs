@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
+using System.Diagnostics;
 using Spark.Models;
 
 namespace Spark.Services;
@@ -39,6 +40,9 @@ public class TextCaptureService
 
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     private static extern IntPtr SendMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetClipboardSequenceNumber();
 
     // Structures
     [StructLayout(LayoutKind.Sequential)]
@@ -96,6 +100,33 @@ public class TextCaptureService
     private const ushort VK_INSERT = 0x2D;
     private const ushort VK_V = 0x56;
     private const uint WM_COPY = 0x0301;
+
+    private static readonly CaptureTuning Tuning = CaptureTuning.Load();
+
+    private sealed record CaptureTuning(
+        int ModifiersReleaseTimeoutMs,
+        int BaseClipboardWaitMs,
+        int RetryClipboardWaitIncrementMs,
+        int InterAttemptDelayMs,
+        int OverallCaptureTimeoutMs)
+    {
+        public static CaptureTuning Load()
+        {
+            return new CaptureTuning(
+                ModifiersReleaseTimeoutMs: ReadInt("Spark_CAPTURE_RELEASE_TIMEOUT_MS", 500, 100, 3000),
+                BaseClipboardWaitMs: ReadInt("Spark_CAPTURE_BASE_WAIT_MS", 320, 120, 2000),
+                RetryClipboardWaitIncrementMs: ReadInt("Spark_CAPTURE_RETRY_INC_MS", 180, 20, 1000),
+                InterAttemptDelayMs: ReadInt("Spark_CAPTURE_INTER_ATTEMPT_MS", 45, 10, 500),
+                OverallCaptureTimeoutMs: ReadInt("Spark_CAPTURE_OVERALL_TIMEOUT_MS", 2200, 400, 8000));
+        }
+
+        private static int ReadInt(string name, int fallback, int min, int max)
+        {
+            if (!int.TryParse(Environment.GetEnvironmentVariable(name), out var parsed))
+                return fallback;
+            return Math.Clamp(parsed, min, max);
+        }
+    }
 
     private static INPUT KeyDown(ushort vk) => new INPUT
     {
@@ -160,7 +191,7 @@ public class TextCaptureService
         return false;
     }
 
-    private static async Task<string?> WaitForClipboardCaptureAsync(int timeoutMs)
+    private static async Task<string?> WaitForClipboardCaptureAsync(int timeoutMs, uint previousSeq, string? previousClipboard)
     {
         var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
         while (DateTime.UtcNow < deadline)
@@ -168,11 +199,16 @@ public class TextCaptureService
             await Task.Delay(20);
             try
             {
+                var currentSeq = GetClipboardSequenceNumber();
                 if (!Clipboard.ContainsText())
                     continue;
 
                 var text = Clipboard.GetText();
                 if (string.IsNullOrWhiteSpace(text))
+                    continue;
+
+                // Ignore stale clipboard content when sequence didn't change.
+                if (currentSeq == previousSeq && string.Equals(text, previousClipboard, StringComparison.Ordinal))
                     continue;
 
                 return text;
@@ -186,6 +222,7 @@ public class TextCaptureService
     public async Task<string?> GetSelectedTextAsync()
     {
         LogCapture("Capture start");
+        var started = Stopwatch.StartNew();
 
         IntPtr sourceWindow = GetForegroundWindow();
         LogCapture($"Foreground window: 0x{sourceWindow.ToInt64():X}");
@@ -207,7 +244,8 @@ public class TextCaptureService
             LastStrategy = "None",
             Attempts = 0,
             Success = false,
-            UsedUiAutomationFallback = false
+            UsedUiAutomationFallback = false,
+            LastFailureReason = "Capture not attempted"
         };
 
         string? previousClipboard = null;
@@ -220,13 +258,24 @@ public class TextCaptureService
         }
         catch { }
 
-        await WaitForModifiersReleasedAsync(500);
+        bool released = await WaitForModifiersReleasedAsync(Tuning.ModifiersReleaseTimeoutMs);
+        if (!released)
+            LogCapture("Modifiers not fully released before capture attempts");
 
         var strategies = BuildStrategies(sourceWindow, appProfile.AppType);
 
         string? selected = null;
+        uint lastClipboardSeq = GetClipboardSequenceNumber();
+        var overallDeadline = DateTime.UtcNow.AddMilliseconds(Tuning.OverallCaptureTimeoutMs);
         for (int attempt = 0; attempt < strategies.Count; attempt++)
         {
+            if (DateTime.UtcNow >= overallDeadline)
+            {
+                LastDiagnostics.LastFailureReason = "Timed out before all capture strategies completed";
+                LogCapture("Overall capture timeout reached before strategy execution");
+                break;
+            }
+
             LastDiagnostics.Attempts = attempt + 1;
             LastDiagnostics.LastStrategy = strategies[attempt].Name;
             LogCapture($"Capture attempt {attempt + 1}/{strategies.Count} using {strategies[attempt].Name}");
@@ -236,7 +285,7 @@ public class TextCaptureService
                 LogCapture($"SetForegroundWindow failed for 0x{sourceWindow.ToInt64():X}");
             }
 
-            await Task.Delay(attempt == 0 ? 12 : 45);
+            await Task.Delay(attempt == 0 ? 12 : Tuning.InterAttemptDelayMs);
 
             ReleaseModifiers();
             await Task.Delay(8);
@@ -245,16 +294,28 @@ public class TextCaptureService
 
             strategies[attempt].Execute();
 
-            var captured = await WaitForClipboardCaptureAsync(320 + attempt * 180);
+            int remainingMs = (int)Math.Max(0, (overallDeadline - DateTime.UtcNow).TotalMilliseconds);
+            int attemptBudget = Tuning.BaseClipboardWaitMs + attempt * Tuning.RetryClipboardWaitIncrementMs;
+            int timeoutMs = Math.Min(attemptBudget, remainingMs);
+            if (timeoutMs <= 0)
+            {
+                LastDiagnostics.LastFailureReason = "Timed out waiting for clipboard update";
+                break;
+            }
+
+            var captured = await WaitForClipboardCaptureAsync(timeoutMs, lastClipboardSeq, previousClipboard);
             if (!string.IsNullOrWhiteSpace(captured))
             {
                 selected = captured;
                 LastDiagnostics.Success = true;
+                LastDiagnostics.LastFailureReason = string.Empty;
                 LogCapture($"Clipboard capture success on attempt {attempt + 1} ({selected.Length} chars)");
                 break;
             }
 
             LogCapture($"Clipboard capture attempt {attempt + 1} yielded no text");
+            LastDiagnostics.LastFailureReason = $"{strategies[attempt].Name} did not produce non-empty clipboard text";
+            lastClipboardSeq = GetClipboardSequenceNumber();
         }
 
         if (string.IsNullOrWhiteSpace(selected))
@@ -262,12 +323,21 @@ public class TextCaptureService
             LastDiagnostics.UsedUiAutomationFallback = true;
             selected = TryGetSelectedTextViaUiAutomation();
             if (string.IsNullOrWhiteSpace(selected))
+            {
                 selected = null;
+                if (string.IsNullOrWhiteSpace(LastDiagnostics.LastFailureReason))
+                    LastDiagnostics.LastFailureReason = "Clipboard and UI Automation capture both failed";
+            }
             else
+            {
                 LastDiagnostics.Success = true;
+                LastDiagnostics.LastFailureReason = string.Empty;
+            }
         }
 
-        LogCapture(selected == null ? "Capture finished: no selected text" : $"Capture finished: success ({selected.Length} chars)");
+        LogCapture(selected == null
+            ? $"Capture finished: no selected text ({started.ElapsedMilliseconds} ms)"
+            : $"Capture finished: success ({selected.Length} chars, {started.ElapsedMilliseconds} ms)");
 
         try
         {
@@ -286,7 +356,7 @@ public class TextCaptureService
     public string GetFailureDiagnosticSummary()
     {
         var d = LastDiagnostics;
-        return $"App: {d.ProcessName} ({d.AppType}), strategy: {d.LastStrategy}, UIA fallback: {(d.UsedUiAutomationFallback ? "used" : "not used")}";
+        return $"App: {d.ProcessName} ({d.AppType}), strategy: {d.LastStrategy}, attempts: {d.Attempts}, UIA fallback: {(d.UsedUiAutomationFallback ? "used" : "not used")}, reason: {d.LastFailureReason}";
     }
 
     private static List<CaptureStrategy> BuildStrategies(IntPtr sourceWindow, string appType)

@@ -52,6 +52,13 @@ public class SettingsBackupService
                 return;
             }
 
+            var validation = ValidateCurrentSettings();
+            if (!validation.IsValid)
+            {
+                DebugLogService.LogMessage($"SettingsBackupService: skipping backup for invalid settings.json ({validation.ErrorMessage})");
+                return;
+            }
+
             string settingsDir = Path.GetDirectoryName(_settingsPath) ?? "";
             if (string.IsNullOrEmpty(settingsDir))
                 return;
@@ -72,7 +79,11 @@ public class SettingsBackupService
 
             // Create new backup as .1
             string backupPath = Path.Combine(settingsDir, "settings.backup.1.json");
-            File.Copy(_settingsPath, backupPath, overwrite: true);
+            string tempBackupPath = backupPath + ".tmp";
+            File.Copy(_settingsPath, tempBackupPath, overwrite: true);
+            if (File.Exists(backupPath))
+                File.Delete(backupPath);
+            File.Move(tempBackupPath, backupPath);
 
             DebugLogService.LogMessage($"SettingsBackupService: Backup created at {backupPath}");
         }
@@ -142,6 +153,9 @@ public class SettingsBackupService
                     var settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
                     if (settings != null)
                     {
+                        if (!IsSettingsSemanticallyValid(settings))
+                            continue;
+
                         // Found a valid backup — restore it
                         File.Copy(backupPath, _settingsPath, overwrite: true);
                         DebugLogService.LogMessage($"SettingsBackupService: Restored from {backupPath}");
@@ -179,5 +193,16 @@ public class SettingsBackupService
         {
             DebugLogService.LogError("SettingsBackupService.ClearAllBackups", ex);
         }
+    }
+
+    private static bool IsSettingsSemanticallyValid(AppSettings settings)
+    {
+        if (settings == null)
+            return false;
+
+        if (string.IsNullOrWhiteSpace(settings.HotkeyModifiers) || string.IsNullOrWhiteSpace(settings.HotkeyKey))
+            return false;
+
+        return settings.ActiveProvider == "OpenRouter" || settings.ActiveProvider == "Groq";
     }
 }

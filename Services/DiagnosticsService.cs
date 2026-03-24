@@ -30,7 +30,7 @@ public class DiagnosticsService
         };
 
         DebugLogService.LogDiagnosticEvent(evt);
-        _analyticsService.TrackDiagnosticError(context, ex.GetType().Name, correlationId);
+        _analyticsService.TrackDiagnosticError(context, ex.GetType().Name, correlationId, metadata);
         TryWriteBundle(evt);
     }
 
@@ -46,7 +46,40 @@ public class DiagnosticsService
         };
 
         DebugLogService.LogDiagnosticEvent(evt);
-        _analyticsService.TrackCrashReported(source, ex.GetType().Name, correlationId);
+        _analyticsService.TrackCrashReported(source, ex.GetType().Name, correlationId, null);
+        TryWriteBundle(evt);
+    }
+
+    public void ReportCaptureFailure(string context, string correlationId, CaptureDiagnostics diagnostics, TextSelectionContext? selectionContext)
+    {
+        var metadata = new Dictionary<string, string>
+        {
+            ["app_type"] = diagnostics.AppType,
+            ["process_name"] = diagnostics.ProcessName,
+            ["strategy"] = diagnostics.LastStrategy,
+            ["attempts"] = diagnostics.Attempts.ToString(),
+            ["uia_fallback"] = diagnostics.UsedUiAutomationFallback ? "1" : "0",
+            ["reason"] = diagnostics.LastFailureReason
+        };
+
+        if (selectionContext != null)
+        {
+            metadata["source_process"] = selectionContext.ProcessName;
+            metadata["source_pid"] = selectionContext.ProcessId.ToString();
+        }
+
+        var evt = new DiagnosticEvent
+        {
+            EventType = "capture_failure",
+            CorrelationId = correlationId,
+            Context = context,
+            ErrorType = "CaptureFailure",
+            Message = diagnostics.LastFailureReason,
+            Metadata = metadata
+        };
+
+        DebugLogService.LogDiagnosticEvent(evt);
+        _analyticsService.TrackCaptureFailed(correlationId, metadata);
         TryWriteBundle(evt);
     }
 

@@ -93,6 +93,9 @@ public class TextCaptureDiagnosticsService
                 ? "No strategy completed successfully"
                 : $"Failed after {diagnostics.Attempts} attempts (last: {diagnostics.LastStrategy})";
 
+            if (!string.IsNullOrWhiteSpace(diagnostics.LastFailureReason))
+                failureReason = $"{failureReason}. {diagnostics.LastFailureReason}";
+
             var record = new CaptureFailureRecord(
                 UtcTime: DateTime.UtcNow,
                 AppName: diagnostics.ProcessName ?? "Unknown",
@@ -139,6 +142,16 @@ public class TextCaptureDiagnosticsService
             var summary = $"Failures (last 5 min): {failuresLast5Min.Count} attempts, " +
                          $"{byApp.Count} distinct app(s), " +
                          $"{distinctStrategies.Count} strategies attempted";
+
+            var commonReasons = failuresLast5Min
+                .GroupBy(f => f.Reason)
+                .OrderByDescending(g => g.Count())
+                .Take(2)
+                .Select(g => $"{g.Key} ({g.Count()})")
+                .ToList();
+
+            if (commonReasons.Count > 0)
+                summary += $"\nMost common: {string.Join("; ", commonReasons)}";
 
             if (byApp.Count == 1)
             {

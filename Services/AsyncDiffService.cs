@@ -16,7 +16,8 @@ namespace Spark.Services;
 public static class AsyncDiffService
 {
     // Threshold (in tokens) above which we move to thread pool to avoid UI lag
-    private const int ThreadPoolThresholdTokens = 400;
+    private static readonly int ThreadPoolThresholdTokens = ReadInt("Spark_DIFF_THREADPOOL_THRESHOLD", 300, 80, 2000);
+    private static readonly int BackgroundTimeoutMs = ReadInt("Spark_DIFF_BACKGROUND_TIMEOUT_MS", 1800, 200, 10000);
 
     /// <summary>
     /// Asynchronously computes a word-level diff.
@@ -35,7 +36,7 @@ public static class AsyncDiffService
         }
 
         // Large diffs: queue to thread pool to avoid blocking UI
-        return await Task.Run(() => DiffService.Compute(original, result));
+        return await ComputeOnBackgroundWithFallbackAsync(original, result, CancellationToken.None);
     }
 
     /// <summary>
@@ -65,14 +66,7 @@ public static class AsyncDiffService
             return DiffService.Compute(original, result);
         }
 
-        // For large diffs, queue to thread pool with cancellation support
-        return await Task.Run(
-            () =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                return DiffService.Compute(original, result);
-            },
-            cancellationToken);
+        return await ComputeOnBackgroundWithFallbackAsync(original, result, cancellationToken);
     }
 
     /// <summary>
@@ -93,5 +87,34 @@ public static class AsyncDiffService
 
         // Simple heuristic: split on whitespace
         return text.Split(new[] { ' ', '\t', '\n', '\r' }, System.StringSplitOptions.RemoveEmptyEntries).Length;
+    }
+
+    private static async Task<List<DiffChunk>> ComputeOnBackgroundWithFallbackAsync(
+        string original,
+        string result,
+        CancellationToken cancellationToken)
+    {
+        var computeTask = Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return DiffService.Compute(original, result);
+            },
+            cancellationToken);
+
+        var timeoutTask = Task.Delay(BackgroundTimeoutMs, cancellationToken);
+        var completed = await Task.WhenAny(computeTask, timeoutTask);
+
+        if (completed == computeTask)
+            return await computeTask;
+
+        return DiffService.ComputeFastFallback(original, result);
+    }
+
+    private static int ReadInt(string name, int fallback, int min, int max)
+    {
+        if (!int.TryParse(Environment.GetEnvironmentVariable(name), out var parsed))
+            return fallback;
+        return Math.Clamp(parsed, min, max);
     }
 }

@@ -125,63 +125,95 @@ public class GlobalHotkeyService : IDisposable
 
     private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
-        if (nCode < 0)
-            return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
-
-        if (_isSuspended)
-            return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
-
-        var kb = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
-
-        // Skip events injected by our own SendInput (Ctrl+C / Ctrl+V in TextCaptureService)
-        if ((kb.flags & LLKHF_INJECTED) != 0)
-            return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
-
-        if (kb.vkCode != _targetVk)
-            return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
-
-        bool isDown = wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN;
-        bool isUp   = wParam == (IntPtr)WM_KEYUP   || wParam == (IntPtr)WM_SYSKEYUP;
-
-        if (isDown)
+        try
         {
-            // Require configured modifiers to be present, but ignore extra pressed
-            // modifiers. This reduces misses in apps with additional key states.
-            bool ctrlDown  = GetAsyncKeyState(VK_CONTROL) < 0;
-            bool shiftDown = GetAsyncKeyState(VK_SHIFT)   < 0;
-            bool altDown   = GetAsyncKeyState(VK_ALT)     < 0;
-            bool winDown   = (GetAsyncKeyState(VK_LWIN) < 0) || (GetAsyncKeyState(VK_RWIN) < 0);
+            if (nCode < 0)
+                return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
 
-            bool modMatch =
-                (!_needCtrl  || ctrlDown) &&
-                (!_needShift || shiftDown) &&
-                (!_needAlt   || altDown) &&
-                (!_needWin   || winDown);
+            if (_isSuspended)
+                return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
 
-            if (modMatch)
+            var kb = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
+
+            // Skip events injected by our own SendInput (Ctrl+C / Ctrl+V in TextCaptureService)
+            if ((kb.flags & LLKHF_INJECTED) != 0)
+                return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
+
+            if (kb.vkCode != _targetVk)
+                return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
+
+            bool isDown = wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN;
+            bool isUp   = wParam == (IntPtr)WM_KEYUP   || wParam == (IntPtr)WM_SYSKEYUP;
+
+            if (isDown)
             {
-                if (!_hotkeyDown)  // only on first press, not auto-repeat
+                // Require configured modifiers to be present, but ignore extra pressed
+                // modifiers. This reduces misses in apps with additional key states.
+                bool ctrlDown  = GetAsyncKeyState(VK_CONTROL) < 0;
+                bool shiftDown = GetAsyncKeyState(VK_SHIFT)   < 0;
+                bool altDown   = GetAsyncKeyState(VK_ALT)     < 0;
+                bool winDown   = (GetAsyncKeyState(VK_LWIN) < 0) || (GetAsyncKeyState(VK_RWIN) < 0);
+
+                bool modMatch =
+                    (!_needCtrl  || ctrlDown) &&
+                    (!_needShift || shiftDown) &&
+                    (!_needAlt   || altDown) &&
+                    (!_needWin   || winDown);
+
+                if (modMatch)
                 {
-                    _hotkeyDown = true;
+                    if (!_hotkeyDown)  // only on first press, not auto-repeat
+                    {
+                        _hotkeyDown = true;
+                        RaiseHotkeyPressedAsync();
+                    }
 
-                    // Fire immediately on key-down for maximum reliability.
-                    // All heavy work runs later on dispatcher; hook returns fast.
-                    Application.Current?.Dispatcher.BeginInvoke(
-                        DispatcherPriority.Input,
-                        new Action(() => HotkeyPressed?.Invoke()));
+                    // Swallow so target apps don't execute their own handlers.
+                    return (IntPtr)1;   // swallow keydown (including auto-repeat)
                 }
-
-                // Swallow so target apps don't execute their own handlers.
-                return (IntPtr)1;   // swallow keydown (including auto-repeat)
             }
-        }
-        else if (isUp && _hotkeyDown)
-        {
-            _hotkeyDown = false;
-            return (IntPtr)1;       // swallow matching keyup
-        }
+            else if (isUp && _hotkeyDown)
+            {
+                _hotkeyDown = false;
+                return (IntPtr)1;       // swallow matching keyup
+            }
 
-        return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
+            return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
+        }
+        catch (Exception ex)
+        {
+            // Hooks must fail open; never let exceptions escape callback.
+            DebugLogService.LogError("GlobalHotkeyService.HookCallback", ex);
+            return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
+        }
+    }
+
+    private void RaiseHotkeyPressedAsync()
+    {
+        try
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null)
+                return;
+
+            dispatcher.BeginInvoke(
+                DispatcherPriority.Input,
+                new Action(() =>
+                {
+                    try
+                    {
+                        HotkeyPressed?.Invoke();
+                    }
+                    catch (Exception ex)
+                    {
+                        DebugLogService.LogError("GlobalHotkeyService.HotkeyPressed", ex);
+                    }
+                }));
+        }
+        catch (Exception ex)
+        {
+            DebugLogService.LogError("GlobalHotkeyService.RaiseHotkeyPressedAsync", ex);
+        }
     }
 
     // ── Cleanup ──────────────────────────────────────────────────────────────

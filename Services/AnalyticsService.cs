@@ -116,31 +116,43 @@ public sealed class AnalyticsService : IDisposable
     /// </summary>
     public void TrackActionError(
         string actionId, bool isBuiltIn,
-        string errorType, string provider) =>
+        string errorType, string provider,
+        Dictionary<string, string>? metadata = null) =>
         Capture("action_error", new
         {
             action_id  = actionId,
             is_builtin = isBuiltIn,
             error_type = errorType,   // e.g. "HttpRequestException" — no user text
             provider,
+            metadata,
             app_version = _appVersion
         });
 
-    public void TrackDiagnosticError(string context, string errorType, string correlationId) =>
+    public void TrackDiagnosticError(string context, string errorType, string correlationId, Dictionary<string, string>? metadata = null) =>
         Capture("diagnostic_error", new
         {
             context,
             error_type = errorType,
             correlation_id = correlationId,
+            metadata,
             app_version = _appVersion
         });
 
-    public void TrackCrashReported(string source, string errorType, string correlationId) =>
+    public void TrackCrashReported(string source, string errorType, string correlationId, Dictionary<string, string>? metadata = null) =>
         Capture("crash_reported", new
         {
             source,
             error_type = errorType,
             correlation_id = correlationId,
+            metadata,
+            app_version = _appVersion
+        });
+
+    public void TrackCaptureFailed(string correlationId, Dictionary<string, string> metadata) =>
+        Capture("capture_failed", new
+        {
+            correlation_id = correlationId,
+            metadata,
             app_version = _appVersion
         });
 
