@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.IO;
 using System.Runtime.InteropServices;
 
 namespace Spark.Services;
@@ -31,6 +32,9 @@ public enum IconKey
 
 public sealed class IconService
 {
+    private static readonly string RuntimeIconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Branding", "ico", "App.ico");
+    private static readonly string DevIconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Branding", "ico", "App.ico");
+
     private static readonly IReadOnlyDictionary<IconKey, string> Glyphs = new Dictionary<IconKey, string>
     {
         [IconKey.CustomAction] = "\uE710",
@@ -145,6 +149,10 @@ public sealed class IconService
 
     public Icon CreateAppTrayIcon()
     {
+        var fileIcon = TryLoadIconFromDisk();
+        if (fileIcon != null)
+            return fileIcon;
+
         var bmp = new Bitmap(16, 16);
         using var g = Graphics.FromImage(bmp);
         g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -163,6 +171,28 @@ public sealed class IconService
         var owned = (Icon)icon.Clone();
         DestroyIcon(hIcon);
         return owned;
+    }
+
+    private static Icon? TryLoadIconFromDisk()
+    {
+        var candidates = new[] { RuntimeIconPath, DevIconPath };
+        foreach (var path in candidates)
+        {
+            try
+            {
+                if (!File.Exists(path))
+                    continue;
+
+                using var loaded = new Icon(path);
+                return (Icon)loaded.Clone();
+            }
+            catch
+            {
+                // Fall through to generated icon.
+            }
+        }
+
+        return null;
     }
 
     private static Font CreateSymbolFont(float size)

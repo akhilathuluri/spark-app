@@ -1,5 +1,7 @@
 ﻿using System.IO;
 using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Spark.Models;
 using Spark.Services;
 using Spark.Windows;
@@ -43,6 +45,8 @@ public partial class App : Application
     private AppUpdateInfo? _latestUpdateInfo;
     private string? _lastNotifiedUpdateVersion;
     private System.Windows.Threading.DispatcherTimer? _updateCheckTimer;
+
+    private static ImageSource? _cachedAppIcon;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -99,6 +103,7 @@ public partial class App : Application
 
         // Helper window for hotkey registration (not shown, not in taskbar)
         _hotkeyWindow = new HotkeyWindow();
+        ApplyWindowIcon(_hotkeyWindow);
         _hotkeyWindow.Show();
         _hotkeyWindow.Hide();
 
@@ -125,6 +130,13 @@ public partial class App : Application
         _historyWindow = new HistoryWindow(_historyService!);
         _moreInfoWindow = new MoreInfoWindow(DeveloperInfo.Default);
         _updatesWindow = new UpdatesWindow();
+
+        ApplyWindowIcon(_resultWindow);
+        ApplyWindowIcon(_actionPanel);
+        ApplyWindowIcon(_historyWindow);
+        ApplyWindowIcon(_moreInfoWindow);
+        ApplyWindowIcon(_updatesWindow);
+
         _updatesWindow.RefreshRequested += OnRefreshUpdatesRequested;
 
         // Show balloon on first start or if no API key set
@@ -306,6 +318,7 @@ public partial class App : Application
             });
 
             _settingsWindow = win;
+            ApplyWindowIcon(win);
             win.Closed += (_, _) =>
             {
                 _settingsWindow = null;
@@ -360,6 +373,38 @@ public partial class App : Application
 
         if (window.IsVisible)
             window.Close();
+    }
+
+    private static void ApplyWindowIcon(Window? window)
+    {
+        if (window == null)
+            return;
+
+        var icon = TryGetAppIcon();
+        if (icon == null)
+            return;
+
+        window.Icon = icon;
+    }
+
+    private static ImageSource? TryGetAppIcon()
+    {
+        if (_cachedAppIcon != null)
+            return _cachedAppIcon;
+
+        try
+        {
+            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Branding", "ico", "App.ico");
+            if (!File.Exists(iconPath))
+                return null;
+
+            _cachedAppIcon = BitmapFrame.Create(new Uri(iconPath, UriKind.Absolute));
+            return _cachedAppIcon;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
