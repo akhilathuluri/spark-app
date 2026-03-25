@@ -180,7 +180,7 @@ public partial class SettingsWindow : Window
     private void ReleasesButton_Click(object sender, RoutedEventArgs e)
     {
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
-            "https://github.com/Spark-app/Spark/releases")
+            "https://usespark.vercel.app/download-started")
             { UseShellExecute = true });
     }
 
