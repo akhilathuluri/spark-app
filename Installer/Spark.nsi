@@ -94,7 +94,7 @@ Section "Install"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Spark" "UninstallString" "$INSTDIR\Uninstall.exe"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Spark" "DisplayIcon" "$INSTDIR\Assets\Branding\ico\App.ico"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Spark" "Publisher" "Spark Development Team"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Spark" "URLInfoAbout" "https://usespark.vercel.app/"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Spark" "URLInfoAbout" "https://www.spark-app.in/"
   WriteRegDWord HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Spark" "NoModify" 1
   WriteRegDWord HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Spark" "NoRepair" 1
   WriteRegDWord HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Spark" "EstimatedSize" 50000
@@ -136,7 +136,7 @@ Section "Uninstall"
 
   
   ; Open uninstall webpage
-  ExecShell "open" "https://usespark.vercel.app/uninstall"
+  ExecShell "open" "https://www.spark-app.in/uninstall"
   
   ; Remove application files
   Delete "$INSTDIR\Spark.exe"

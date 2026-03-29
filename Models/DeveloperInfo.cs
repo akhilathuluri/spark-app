@@ -10,8 +10,8 @@ public class DeveloperInfo
     public string DeveloperName { get; set; } = "Athuluri Akhil";
     public string DeveloperMessage { get; set; } =
         "Thank you for using Spark. Your feedback helps shape upcoming improvements and new features.";
-    public string ContactUrl { get; set; } = "https://usespark.vercel.app/issues";
-    public string ReportIssueUrl { get; set; } = "https://usespark.vercel.app/issues";
+    public string ContactUrl { get; set; } = "https://www.spark-app.in/issues";
+    public string ReportIssueUrl { get; set; } = "https://www.spark-app.in/issues";
 
     public static DeveloperInfo Default => new();
 }
