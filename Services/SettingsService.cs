@@ -279,7 +279,8 @@ public class SettingsService
             Theme = settings.Theme,
             Language = settings.Language,
             SafeReplacePreviewMode = settings.SafeReplacePreviewMode,
-            EnableDiagnosticsBundle = settings.EnableDiagnosticsBundle
+            EnableDiagnosticsBundle = settings.EnableDiagnosticsBundle,
+            OnboardingCompleted = settings.OnboardingCompleted
         };
     }
 

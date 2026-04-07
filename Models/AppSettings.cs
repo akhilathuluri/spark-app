@@ -17,6 +17,7 @@ public class AppSettings
     public string Language { get; set; } = "en";
     public bool SafeReplacePreviewMode { get; set; } = false;
     public bool EnableDiagnosticsBundle { get; set; } = true;
+    public bool OnboardingCompleted { get; set; } = false;
 }
 
 public class OpenRouterSettings

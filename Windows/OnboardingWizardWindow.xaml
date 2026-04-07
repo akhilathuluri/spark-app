@@ -1,0 +1,198 @@
+<Window x:Class="Spark.Windows.OnboardingWizardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Spark Onboarding"
+        Width="740" Height="620"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        SnapsToDevicePixels="True"
+        UseLayoutRounding="True">
+
+    <Window.CacheMode>
+        <BitmapCache EnableClearType="True" SnapsToDevicePixels="True"/>
+    </Window.CacheMode>
+
+    <Window.Resources>
+        <Style x:Key="SectionHeader" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#7C6AF7"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <Style x:Key="CardLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#A8A8D4"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#5A4AF7"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#6B5AF8"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#1E1E34"/>
+            <Setter Property="Foreground" Value="#8D8DCD"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#2A2A4A"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border x:Name="RootBorder"
+            Background="#16161E"
+            CornerRadius="14"
+            Opacity="0"
+            RenderTransformOrigin="0.5,0.5">
+
+        <Border.RenderTransform>
+            <ScaleTransform x:Name="ScaleT" ScaleX="0.96" ScaleY="0.96"/>
+        </Border.RenderTransform>
+
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="32" ShadowDepth="0" Color="#000000" Opacity="0.65"/>
+        </Border.Effect>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Padding="20,15,14,10" MouseDown="TitleBar_MouseDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="🚀" FontSize="17" Margin="0,0,8,0"/>
+                        <StackPanel>
+                            <TextBlock Text="Welcome to Spark" FontSize="16" FontWeight="SemiBold" Foreground="#E0E0F0"/>
+                            <TextBlock Text="Get setup in under 2 minutes" FontSize="11" Foreground="#8080B0"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="✕" Click="SkipButton_Click"
+                            Background="Transparent" BorderThickness="0"
+                            Foreground="#5A5A7A" FontSize="14" Cursor="Hand"
+                            Width="28" Height="28"/>
+                </Grid>
+            </Border>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="20,8,20,0">
+                <StackPanel>
+
+                    <Border Background="#1A1A28" CornerRadius="10" Padding="14,12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="STEP 1 · API CONFIGURATION" Style="{StaticResource SectionHeader}"/>
+                            <TextBlock x:Name="ApiStatusText" Text="Status: Pending" Style="{StaticResource CardLabel}"/>
+                            <TextBlock Text="Open settings once, add API key and model, save, then click Validate." Style="{StaticResource CardLabel}" Margin="0,6,0,8"/>
+                            <WrapPanel>
+                                <Button Content="Open Settings" Style="{StaticResource SecondaryButton}" Click="OpenSettingsButton_Click" Margin="0,0,8,0"/>
+                                <Button Content="Validate API" Style="{StaticResource SecondaryButton}" Click="ValidateApiButton_Click"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="#1A1A28" CornerRadius="10" Padding="14,12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="STEP 2 · HOTKEY CHECK" Style="{StaticResource SectionHeader}"/>
+                            <TextBlock x:Name="HotkeyStatusText" Text="Status: Pending" Style="{StaticResource CardLabel}"/>
+                            <TextBlock Text="Spark listens globally. We verify your configured shortcut is valid and saved." Style="{StaticResource CardLabel}" Margin="0,6,0,8"/>
+                            <Button Content="Validate Hotkey" Style="{StaticResource SecondaryButton}" Click="ValidateHotkeyButton_Click" Width="140"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="#1A1A28" CornerRadius="10" Padding="14,12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="STEP 3 · CAPTURE TEST" Style="{StaticResource SectionHeader}"/>
+                            <TextBlock x:Name="CaptureStatusText" Text="Status: Pending" Style="{StaticResource CardLabel}"/>
+                            <TextBlock Text="Select text in any app. Click Start; Spark will wait 3 seconds and attempt capture." Style="{StaticResource CardLabel}" Margin="0,6,0,8"/>
+                            <Button x:Name="CaptureTestButton" Content="Start Capture Test" Style="{StaticResource SecondaryButton}" Click="CaptureTestButton_Click" Width="160"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="#1A1A28" CornerRadius="10" Padding="14,12">
+                        <StackPanel>
+                            <TextBlock Text="STEP 4 · QUICK AI SUCCESS TEST" Style="{StaticResource SectionHeader}"/>
+                            <TextBlock x:Name="AiStatusText" Text="Status: Pending" Style="{StaticResource CardLabel}"/>
+                            <TextBlock Text="Runs a quick transform so you leave onboarding with a real success." Style="{StaticResource CardLabel}" Margin="0,6,0,8"/>
+                            <WrapPanel>
+                                <Button x:Name="QuickTestButton" Content="Run Quick AI Test" Style="{StaticResource SecondaryButton}" Click="QuickTestButton_Click" Margin="0,0,8,0" Width="150"/>
+                                <TextBlock x:Name="ProgressText" VerticalAlignment="Center" Foreground="#9C9CC8" FontSize="12"/>
+                            </WrapPanel>
+                            <TextBox x:Name="ResultPreviewBox"
+                                     Margin="0,10,0,0"
+                                     Height="88"
+                                     IsReadOnly="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Background="#12121D"
+                                     Foreground="#DFDFFF"
+                                     BorderBrush="#2A2A42"
+                                     BorderThickness="1"
+                                     Padding="10"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <Border Grid.Row="2" Padding="20,12,20,16">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="FooterText" Text="Complete at least API + capture + quick test for best first run." FontSize="11" Foreground="#4A4A72" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Content="Skip" Style="{StaticResource SecondaryButton}" Click="SkipButton_Click"/>
+                    <Button x:Name="FinishButton" Grid.Column="3" Content="Finish Setup" Style="{StaticResource PrimaryButton}" Click="FinishButton_Click" IsEnabled="False"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

@@ -17,6 +17,7 @@ public partial class App : Application
     private ActionsService? _actionsService;
     private AiService? _aiService;
     private HistoryService? _historyService;
+    private UsageMetricsService? _usageMetricsService;
     private AnalyticsService? _analyticsService;
     private DiagnosticsService? _diagnosticsService;
     private UpdateNotificationService? _updateService;
@@ -41,6 +42,8 @@ public partial class App : Application
     private HistoryWindow? _historyWindow;
     private MoreInfoWindow? _moreInfoWindow;
     private UpdatesWindow? _updatesWindow;
+    private UsageDashboardWindow? _usageDashboardWindow;
+    private OnboardingWizardWindow? _onboardingWindow;
     private SettingsWindow? _settingsWindow;
     private AppUpdateInfo? _latestUpdateInfo;
     private string? _lastNotifiedUpdateVersion;
@@ -71,6 +74,7 @@ public partial class App : Application
         _aiService = new AiService(_settingsService);
         _textCapture = new TextCaptureService();
         _historyService = new HistoryService();
+        _usageMetricsService = new UsageMetricsService();
         _updateService = new UpdateNotificationService();
 
         // New diagnostic and resilience services (issues #1–5)
@@ -96,6 +100,7 @@ public partial class App : Application
         _trayService = new TrayService();
         _trayService.OpenSettingsRequested += OpenSettings;
         _trayService.OpenHistoryRequested  += OpenHistory;
+        _trayService.OpenUsageDashboardRequested += OpenUsageDashboard;
         _trayService.OpenUpdatesRequested += OpenUpdates;
         _trayService.OpenMoreInfoRequested += OpenMoreInfo;
         _trayService.ExitRequested += () => Shutdown();
@@ -125,17 +130,19 @@ public partial class App : Application
         StartupService.Apply(settings.StartWithWindows);
 
         // Pre-create windows (hidden) — reused on every hotkey press
-        _resultWindow = new ResultWindow(_aiService, _textCapture, _settingsService, _historyService!, _analyticsService!, _diagnosticsService);
+        _resultWindow = new ResultWindow(_aiService, _textCapture, _settingsService, _historyService!, _usageMetricsService!, _analyticsService!, _diagnosticsService);
         _actionPanel  = new ActionPanelWindow(_actionsService, _aiService, _textCapture, _settingsService, _resultWindow);
         _historyWindow = new HistoryWindow(_historyService!);
         _moreInfoWindow = new MoreInfoWindow(DeveloperInfo.Default);
         _updatesWindow = new UpdatesWindow();
+        _usageDashboardWindow = new UsageDashboardWindow(_usageMetricsService!);
 
         ApplyWindowIcon(_resultWindow);
         ApplyWindowIcon(_actionPanel);
         ApplyWindowIcon(_historyWindow);
         ApplyWindowIcon(_moreInfoWindow);
         ApplyWindowIcon(_updatesWindow);
+        ApplyWindowIcon(_usageDashboardWindow);
 
         _updatesWindow.RefreshRequested += OnRefreshUpdatesRequested;
 
@@ -154,6 +161,24 @@ public partial class App : Application
         if (!string.IsNullOrWhiteSpace(_settingsService.LastRecoveryMessage))
         {
             _trayService.ShowBalloon("Spark settings recovered", _settingsService.LastRecoveryMessage!);
+        }
+
+        if (!settings.OnboardingCompleted)
+        {
+            _hotkeyService?.SetSuspended(true);
+            _onboardingWindow = new OnboardingWizardWindow(
+                _settingsService,
+                _textCapture,
+                _aiService,
+                CompleteOnboarding);
+            ApplyWindowIcon(_onboardingWindow);
+            _onboardingWindow.Closed += (_, _) =>
+            {
+                _hotkeyService?.SetSuspended(false);
+                _onboardingWindow = null;
+            };
+            _onboardingWindow.Show();
+            _onboardingWindow.Activate();
         }
 
         _ = CheckForUpdatesAsync(showUpToDateBalloon: false);
@@ -349,6 +374,8 @@ public partial class App : Application
         CloseWindow(_historyWindow);
         CloseWindow(_moreInfoWindow);
         CloseWindow(_updatesWindow);
+        CloseWindow(_usageDashboardWindow);
+        CloseWindow(_onboardingWindow);
         CloseWindow(_hotkeyWindow);
 
         _hotkeyService?.Dispose();
@@ -476,6 +503,36 @@ public partial class App : Application
             if (_latestUpdateInfo is null)
                 _ = CheckForUpdatesAsync(showUpToDateBalloon: false);
         });
+    }
+
+    private void OpenUsageDashboard()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            if (_usageDashboardWindow is null)
+                return;
+
+            if (_usageDashboardWindow.IsVisible)
+            {
+                _usageDashboardWindow.Activate();
+                return;
+            }
+
+            _usageDashboardWindow.ShowPanel();
+        });
+    }
+
+    private void CompleteOnboarding()
+    {
+        if (_settingsService is null)
+            return;
+
+        var settings = _settingsService.Load();
+        if (settings.OnboardingCompleted)
+            return;
+
+        settings.OnboardingCompleted = true;
+        _settingsService.Save(settings);
     }
 }
 

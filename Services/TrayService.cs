@@ -16,6 +16,7 @@ public class TrayService : IDisposable
 
     public event Action? OpenSettingsRequested;
     public event Action? OpenHistoryRequested;
+    public event Action? OpenUsageDashboardRequested;
     public event Action? OpenUpdatesRequested;
     public event Action? OpenMoreInfoRequested;
     public event Action? ExitRequested;
@@ -49,6 +50,13 @@ public class TrayService : IDisposable
         };
         settingsItem.Click += (_, _) => OpenSettingsRequested?.Invoke();
         _contextMenu.Items.Add(settingsItem);
+
+        var usageItem = new ToolStripMenuItem("Usage Dashboard")
+        {
+            Image = _iconService.CreateMenuImage(IconKey.UsageDashboard)
+        };
+        usageItem.Click += (_, _) => OpenUsageDashboardRequested?.Invoke();
+        _contextMenu.Items.Add(usageItem);
 
         _updatesItem = new ToolStripMenuItem("Updates Available")
         {

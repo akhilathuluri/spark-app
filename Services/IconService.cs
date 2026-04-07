@@ -10,6 +10,7 @@ public enum IconKey
     CustomAction,
     History,
     Settings,
+    UsageDashboard,
     Updates,
     MoreInfo,
     Exit,
@@ -244,6 +245,13 @@ public sealed class IconService
                     var y2 = size * 0.5f + MathF.Sin(angle) * size * 0.33f;
                     g.DrawLine(pen, x1, y1, x2, y2);
                 }
+                break;
+
+            case IconKey.UsageDashboard:
+                g.DrawLine(pen, size * 0.2f, size * 0.78f, size * 0.8f, size * 0.78f);
+                g.DrawLine(pen, size * 0.3f, size * 0.78f, size * 0.3f, size * 0.46f);
+                g.DrawLine(pen, size * 0.5f, size * 0.78f, size * 0.5f, size * 0.3f);
+                g.DrawLine(pen, size * 0.7f, size * 0.78f, size * 0.7f, size * 0.56f);
                 break;
 
             case IconKey.Updates:

@@ -16,6 +16,7 @@ public partial class ResultWindow : Window
     private readonly SettingsService _settingsService;
     private readonly HistoryService _historyService;
     private readonly TextSanitizationService _textSanitizationService;
+    private readonly UsageMetricsService _usageMetricsService;
     private CancellationTokenSource? _cts;
     private string _resultText = string.Empty;
     private readonly StringBuilder _rawResultBuilder = new();
@@ -49,6 +50,7 @@ public partial class ResultWindow : Window
         TextCaptureService textCapture,
         SettingsService settingsService,
         HistoryService historyService,
+        UsageMetricsService usageMetricsService,
         AnalyticsService analyticsService,
         DiagnosticsService? diagnosticsService = null)
     {
@@ -56,6 +58,7 @@ public partial class ResultWindow : Window
         _textCapture = textCapture;
         _settingsService = settingsService;
         _historyService = historyService;
+        _usageMetricsService = usageMetricsService;
         _analyticsService = analyticsService;
         _diagnosticsService = diagnosticsService;
         _textSanitizationService = new TextSanitizationService();
@@ -216,6 +219,18 @@ public partial class ResultWindow : Window
             if (chunkCount > 0)
                 _analyticsService.TrackActionCompleted(
                     action.Id, action.IsBuiltIn, chunkCount, resultLength, sw.ElapsedMilliseconds, provider);
+
+            if (!string.IsNullOrWhiteSpace(_resultText))
+            {
+                _usageMetricsService.RecordAction(
+                    action.Id,
+                    action.Name,
+                    provider,
+                    model,
+                    selectedText,
+                    _resultText,
+                    (int)sw.ElapsedMilliseconds);
+            }
         }
         catch (OperationCanceledException)
         {
