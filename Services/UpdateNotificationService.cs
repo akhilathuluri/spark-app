@@ -1,13 +1,18 @@
+using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Spark.Models;
 
+
 namespace Spark.Services;
 
 public sealed class UpdateNotificationService : IDisposable
 {
-    private const string DefaultBaseUrl = "http://localhost:8080";
+    // Empty string = no update check configured (safe default for local/dev builds).
+    // Set updateApi.baseUrl in appsettings.json, or use Spark_API_BASE_URL env var.
+    private const string DefaultBaseUrl = "";
+
     private readonly HttpClient _http;
     private readonly bool _ownsHttpClient;
     private readonly string _baseUrl;
@@ -17,8 +22,52 @@ public sealed class UpdateNotificationService : IDisposable
         _ownsHttpClient = httpClient is null;
         _http = httpClient ?? new HttpClient();
         _baseUrl = string.IsNullOrWhiteSpace(baseUrl)
-            ? Environment.GetEnvironmentVariable("Spark_API_BASE_URL") ?? DefaultBaseUrl
+            ? LoadBaseUrlFromConfig()
             : baseUrl;
+    }
+
+    /// <summary>
+    /// Resolves the update API base URL using the following priority:
+    ///   1. appsettings.json  → updateApi.baseUrl
+    ///   2. Environment variable Spark_API_BASE_URL
+    ///   3. DefaultBaseUrl (empty string — disables update checks)
+    /// This makes it trivial to point releases at a real API without code changes.
+    /// </summary>
+    private static string LoadBaseUrlFromConfig()
+    {
+        // Priority 1: appsettings.json
+        try
+        {
+            var basePath = AppDomain.CurrentDomain.BaseDirectory;
+            var devPath  = Path.Combine(basePath, "appsettings.developer.json");
+            var pubPath  = Path.Combine(basePath, "appsettings.json");
+            var cfgPath  = File.Exists(devPath) ? devPath : pubPath;
+
+            if (File.Exists(cfgPath))
+            {
+                var json = File.ReadAllText(cfgPath);
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("updateApi", out var updateEl) &&
+                    updateEl.TryGetProperty("baseUrl", out var urlEl))
+                {
+                    var configured = urlEl.GetString()?.Trim();
+                    if (!string.IsNullOrWhiteSpace(configured))
+                        return configured;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            DebugLogService.LogError("UpdateNotificationService.LoadBaseUrlFromConfig", ex);
+        }
+
+        // Priority 2: environment variable (runtime override)
+        var envUrl = Environment.GetEnvironmentVariable("Spark_API_BASE_URL")?.Trim();
+        if (!string.IsNullOrWhiteSpace(envUrl))
+            return envUrl;
+
+        // Priority 3: default (empty = disabled)
+        return DefaultBaseUrl;
     }
 
     public void Dispose()
@@ -29,6 +78,13 @@ public sealed class UpdateNotificationService : IDisposable
 
     public async Task<AppUpdateInfo?> CheckForUpdateAsync(string appId = "Spark", CancellationToken cancellationToken = default)
     {
+        // Skip entirely when no API URL is configured — avoids wasted HTTP calls on dev builds.
+        if (string.IsNullOrWhiteSpace(_baseUrl))
+        {
+            DebugLogService.LogMessage("UpdateNotificationService: no updateApi.baseUrl configured — update check skipped.");
+            return null;
+        }
+
         try
         {
             var endpoint = $"{_baseUrl.TrimEnd('/')}/api/app-table";

@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -29,8 +29,10 @@ public partial class App : Application
     private TextCaptureDiagnosticsService? _captureDiagnostics;
     private CustomActionValidationService? _actionValidator;
 
-    // Hotkey debounce: prevent rapid repeated presses from spawning multiple windows
-    private bool _hotkeyProcessing = false;
+    // Hotkey debounce: prevent rapid repeated presses from spawning multiple windows.
+    // volatile: ensures the flag is read from main memory, not a CPU register cache,
+    // guarding against stale reads if an async continuation ever resumes on a different thread.
+    private volatile bool _hotkeyProcessing = false;
     private DateTime _lastNoTextCapturedNoticeUtc = DateTime.MinValue;
 
     // Hidden message-only window to receive hotkey messages

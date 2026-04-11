@@ -24,6 +24,12 @@ public class SettingsService
     private readonly string _settingsPath;
     private SettingsBackupService? _backupService;  // Optional: set via SetBackupService()
 
+    // ── In-memory cache — eliminates redundant disk reads on every hotkey press.
+    // Cache is populated on first Load(), updated on every Save(), and never expiry-based
+    // (settings only change through Save(), so time-based expiry would be pointless here).
+    // Thread safety: all callers run on the WPF Dispatcher thread; no lock needed.
+    private AppSettings? _cachedSettings;
+
     public string? LastRecoveryMessage { get; private set; }
 
     public SettingsService()
@@ -54,6 +60,11 @@ public class SettingsService
 
     public AppSettings Load()
     {
+        // Fast path: return cached settings if available.
+        // Avoids repeated JSON file reads on every hotkey press.
+        if (_cachedSettings != null)
+            return _cachedSettings;
+
         LastRecoveryMessage = null;
 
         try
@@ -92,6 +103,7 @@ public class SettingsService
                 LastRecoveryMessage = recoveryMessage;
             }
 
+            _cachedSettings = settings;  // Populate cache after successful load + migration.
             return settings;
         }
         catch (Exception ex)
@@ -99,8 +111,16 @@ public class SettingsService
             DebugLogService.LogError("SettingsService.Load", ex);
         }
 
+        // Fallback to defaults on failure; do NOT cache so next call retries the file.
         return new AppSettings();
     }
+
+    /// <summary>
+    /// Force-clears the in-memory cache so the next Load() re-reads from disk.
+    /// Only needed in rare scenarios (e.g. external process modifies settings.json).
+    /// Normal save/load cycles are automatically coherent via Save() updating the cache.
+    /// </summary>
+    public void InvalidateCache() => _cachedSettings = null;
 
     private AppSettings LoadFromPrimaryOrBackup(out bool restoredFromBackup)
     {
@@ -144,6 +164,10 @@ public class SettingsService
             Directory.CreateDirectory(Path.GetDirectoryName(_settingsPath)!);
             var json = JsonSerializer.Serialize(persisted, JsonOptions);
             WriteAllTextAtomic(_settingsPath, json);
+
+            // Update in-memory cache with the full settings (including hydrated API keys)
+            // so subsequent Load() calls are instant without re-reading the file.
+            _cachedSettings = settings;
 
             // Create backup after successful save (if backup service attached)
             // Non-breaking: if no backup service, this is silently skipped
