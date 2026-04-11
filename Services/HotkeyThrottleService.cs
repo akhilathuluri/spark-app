@@ -7,7 +7,10 @@ namespace Spark.Services;
 /// </summary>
 public class HotkeyThrottleService
 {
-    private DateTime _lastHotkeySuppressedUtc = DateTime.MinValue;
+    // Tracks the last press that was ALLOWED through (not the last suppressed one).
+    // The name was previously _lastHotkeySuppressedUtc which was misleading and caused
+    // confusion about the throttle logic — renamed to reflect the actual semantics.
+    private DateTime _lastProcessedUtc = DateTime.MinValue;
     private int _suppressedCount = 0;
     private int _consecutiveSuppressions = 0;
 
@@ -37,11 +40,13 @@ public class HotkeyThrottleService
     /// <summary>
     /// Call this from the hotkey press handler. Returns true if the press should be processed,
     /// false if it should be suppressed due to rate limiting.
+    /// The 500ms window is measured from the last ALLOWED press — rapid consecutive presses
+    /// within that window are all dropped until 500ms elapses since the last processed one.
     /// </summary>
     public bool ShouldProcess()
     {
         var now = DateTime.UtcNow;
-        var elapsed = (now - _lastHotkeySuppressedUtc).TotalMilliseconds;
+        var elapsed = (now - _lastProcessedUtc).TotalMilliseconds;
 
         if (elapsed < ThrottleTimeMs)
         {
@@ -57,7 +62,8 @@ public class HotkeyThrottleService
             return false;
         }
 
-        _lastHotkeySuppressedUtc = now;
+        // This press is allowed — record when it was processed.
+        _lastProcessedUtc = now;
 
         // Log if we had a suppression burst, so user knows what happened
         if (_consecutiveSuppressions > 5)
@@ -74,7 +80,7 @@ public class HotkeyThrottleService
     /// </summary>
     public void Reset()
     {
-        _lastHotkeySuppressedUtc = DateTime.MinValue;
+        _lastProcessedUtc = DateTime.MinValue;
         _suppressedCount = 0;
         _consecutiveSuppressions = 0;
     }

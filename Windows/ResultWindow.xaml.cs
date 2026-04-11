@@ -22,6 +22,9 @@ public partial class ResultWindow : Window
     private string _resultText = string.Empty;
     private readonly StringBuilder _rawResultBuilder = new();
 
+    // Cursor position from the hotkey press — used to position the window near the user's work.
+    private System.Windows.Point _lastCursorPos;
+
     // Remembered for Regenerate and FullEditor
     private ActionItem? _currentAction;
     private string _currentSelectedText = string.Empty;
@@ -75,8 +78,12 @@ public partial class ResultWindow : Window
 
     // ── Entry point — safe to call multiple times on the same instance ───────
 
-    public void ShowWithProcessing(ActionItem action, string selectedText)
+    public void ShowWithProcessing(ActionItem action, string selectedText,
+        System.Windows.Point? cursorPos = null)
     {
+        // Store cursor so PositionWindow() can place the result near the user's work.
+        if (cursorPos.HasValue) _lastCursorPos = cursorPos.Value;
+
         // Cancel any in-flight AI stream and diff computation from a previous use.
         _cts?.Cancel();
         _cts?.Dispose();
@@ -121,9 +128,7 @@ public partial class ResultWindow : Window
         ActionIcon.Text  = action.Icon;
         ActionTitle.Text = action.Name;
 
-        var screen = SystemParameters.WorkArea;
-        Left = (screen.Width - Width) / 2;
-        Top  = (screen.Height - 400) / 2;
+        PositionWindow();
 
         Show();
         Activate();
@@ -277,6 +282,42 @@ public partial class ResultWindow : Window
         }
     }
 
+    // ── Window positioning ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// Positions the result window near the cursor captured at hotkey time.
+    /// Falls back to screen-center when no cursor position is available.
+    /// Applies screen-edge clamping so the window never leaves the working area.
+    /// </summary>
+    private void PositionWindow()
+    {
+        var screen = SystemParameters.WorkArea;
+
+        // No cursor captured yet — fall back to screen-center (first-run / edge case).
+        if (_lastCursorPos == default)
+        {
+            Left = (screen.Width  - Width)  / 2;
+            Top  = (screen.Height - 400)    / 2;
+            return;
+        }
+
+        var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(this);
+        double winW = Width  > 0 ? Width  : 520;  // fallback if not yet rendered
+        double winH = 400;                          // conservative height estimate
+
+        double x = _lastCursorPos.X / dpi.DpiScaleX + 16;
+        double y = _lastCursorPos.Y / dpi.DpiScaleY + 16;
+
+        // Clamp so the window stays fully within the working area.
+        if (x + winW > screen.Right)  x = screen.Right  - winW - 10;
+        if (y + winH > screen.Bottom) y = screen.Bottom - winH - 10;
+        if (x < screen.Left) x = screen.Left + 10;
+        if (y < screen.Top)  y = screen.Top  + 10;
+
+        Left = x;
+        Top  = y;
+    }
+
     private void AnimateResultIn()
     {
         var dur = new Duration(TimeSpan.FromMilliseconds(180));
@@ -367,7 +408,10 @@ public partial class ResultWindow : Window
                         postValidation.CurrentProcessName,
                         allowCancel: false)
                     {
-                        Owner = this
+                        // Owner=null: ResultWindow is hidden at this point; anchoring to a hidden
+                        // window would place the dialog off-screen or at (0,0). null centres it
+                        // on the primary screen safely.
+                        Owner = null
                     };
 
                     dialog.ShowDialog();

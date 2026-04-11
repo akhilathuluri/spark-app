@@ -35,6 +35,10 @@ public partial class ActionPanelWindow : Window
     private string _selectedText = string.Empty;
     private System.Windows.Point _cursorPos;
 
+    // Pooled AskWindow — created once on first use, then reused (hidden/shown) like all other
+    // pre-created windows. Eliminates per-click allocation and untracked floating windows.
+    private AskWindow? _askWindow;
+
     // Guard: prevents Deactivated from closing right as the window appears
     private bool _allowDeactivateClose = false;
 
@@ -104,14 +108,17 @@ public partial class ActionPanelWindow : Window
         x += 12;
         y += 12;
 
-        // Keep on screen — use ActualHeight instead of magic number
-        double estimatedHeight = 450; // approximation if ActualHeight not ready yet
-        if (ActualHeight > 0) estimatedHeight = ActualHeight;
+        // Guard against ActualWidth/ActualHeight being 0 before the first layout pass.
+        // Use known fallback dimensions so clamping works correctly on first show.
+        const double FallbackWidth  = 380;
+        const double FallbackHeight = 450;
+        double panelW = ActualWidth  > 0 ? ActualWidth  : FallbackWidth;
+        double panelH = ActualHeight > 0 ? ActualHeight : FallbackHeight;
 
-        if (x + ActualWidth > screen.Right) x = screen.Right - ActualWidth - 10;
-        if (y + estimatedHeight > screen.Bottom) y = y - estimatedHeight - 20;
+        if (x + panelW > screen.Right)  x = screen.Right  - panelW - 10;
+        if (y + panelH > screen.Bottom) y = y - panelH - 20;
         if (x < screen.Left) x = screen.Left + 10;
-        if (y < screen.Top) y = screen.Top + 10;
+        if (y < screen.Top)  y = screen.Top  + 10;
 
         Left = x;
         Top = y;
@@ -207,8 +214,9 @@ public partial class ActionPanelWindow : Window
             {
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    var askWindow = new AskWindow(_aiService, _textCapture, _settingsService, _resultWindow);
-                    askWindow.ShowWithText(selectedText, cursorPos);
+                    // Lazy-init: create once, then reuse (same pattern as all other pooled windows).
+                    _askWindow ??= new AskWindow(_aiService, _textCapture, _settingsService, _resultWindow);
+                    _askWindow.ShowWithText(selectedText, cursorPos);
                 }));
             });
             return;
@@ -216,12 +224,13 @@ public partial class ActionPanelWindow : Window
 
         if (string.IsNullOrWhiteSpace(action.Prompt)) return;
 
+        var capturedCursor = _cursorPos;
         AnimateClose(onComplete: () =>
         {
             // Defer to next dispatcher frame so we're fully outside the animation callback
             Dispatcher.BeginInvoke(new Action(() =>
             {
-                _resultWindow.ShowWithProcessing(action, _selectedText);
+                _resultWindow.ShowWithProcessing(action, _selectedText, capturedCursor);
             }));
         });
     }

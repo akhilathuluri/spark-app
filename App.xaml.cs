@@ -181,7 +181,29 @@ public partial class App : Application
             };
             _onboardingWindow.Show();
             _onboardingWindow.Activate();
+
+            // Safety watchdog: if the onboarding window is killed by the OS (crash, task-manager,
+            // etc.) without firing its Closed event, the hotkey would stay suspended forever.
+            // This timer fires once after 5 minutes and re-enables the hotkey regardless.
+            // Non-breaking: if onboarding completes normally, the Closed handler already called
+            // SetSuspended(false) and _onboardingWindow is null, so the watchdog is a no-op.
+            var watchdog = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMinutes(5)
+            };
+            watchdog.Tick += (_, _) =>
+            {
+                watchdog.Stop();
+                if (_onboardingWindow != null)
+                {
+                    DebugLogService.LogMessage("Onboarding watchdog: window not closed after 5 min — re-enabling hotkey.");
+                    _hotkeyService?.SetSuspended(false);
+                    // Do NOT null _onboardingWindow here; the window itself may still be open.
+                }
+            };
+            watchdog.Start();
         }
+
 
         _ = CheckForUpdatesAsync(showUpToDateBalloon: false);
         StartUpdateCheckTimer();
