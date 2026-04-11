@@ -62,6 +62,7 @@ public partial class ResultWindow : Window
         HistoryService historyService,
         UsageMetricsService usageMetricsService,
         AnalyticsService analyticsService,
+        TextSanitizationService textSanitizationService,
         DiagnosticsService? diagnosticsService = null)
     {
         _aiService = aiService;
@@ -71,7 +72,7 @@ public partial class ResultWindow : Window
         _usageMetricsService = usageMetricsService;
         _analyticsService = analyticsService;
         _diagnosticsService = diagnosticsService;
-        _textSanitizationService = new TextSanitizationService();
+        _textSanitizationService = textSanitizationService;
 
         InitializeComponent();
     }

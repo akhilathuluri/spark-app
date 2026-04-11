@@ -20,6 +20,7 @@ public partial class App : Application
     private UsageMetricsService? _usageMetricsService;
     private AnalyticsService? _analyticsService;
     private DiagnosticsService? _diagnosticsService;
+    private TextSanitizationService? _textSanitizationService;
     private UpdateNotificationService? _updateService;
     private System.Threading.Mutex? _mutex; // kept alive for the process lifetime
 
@@ -88,6 +89,7 @@ public partial class App : Application
         _settingsService.SetBackupService(_settingsBackup);  // Attach to auto-backup on save
         _captureDiagnostics = new TextCaptureDiagnosticsService();
         _actionValidator = new CustomActionValidationService();
+        _textSanitizationService = new TextSanitizationService();
 
         // Analytics — developer-only, silently disabled if API key is not set
         _analyticsService = new AnalyticsService();
@@ -132,7 +134,7 @@ public partial class App : Application
         StartupService.Apply(settings.StartWithWindows);
 
         // Pre-create windows (hidden) — reused on every hotkey press
-        _resultWindow = new ResultWindow(_aiService, _textCapture, _settingsService, _historyService!, _usageMetricsService!, _analyticsService!, _diagnosticsService);
+        _resultWindow = new ResultWindow(_aiService, _textCapture, _settingsService, _historyService!, _usageMetricsService!, _analyticsService!, _textSanitizationService, _diagnosticsService);
         _actionPanel  = new ActionPanelWindow(_actionsService, _aiService, _textCapture, _settingsService, _resultWindow);
         _historyWindow = new HistoryWindow(_historyService!);
         _moreInfoWindow = new MoreInfoWindow(DeveloperInfo.Default);

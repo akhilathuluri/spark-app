@@ -58,6 +58,13 @@ public sealed class AnalyticsService : IDisposable
                     var apiKey = phEl.TryGetProperty("apiKey", out var keyEl) ? keyEl.GetString() : "";
                     var host = phEl.TryGetProperty("host", out var hostEl) ? hostEl.GetString() : "https://eu.i.posthog.com";
                     
+                    if (string.IsNullOrWhiteSpace(apiKey))
+                    {
+                        var envKey = Environment.GetEnvironmentVariable("Spark_POSTHOG_API_KEY");
+                        if (!string.IsNullOrWhiteSpace(envKey))
+                            apiKey = envKey;
+                    }
+                    
                     return (enabled && !string.IsNullOrWhiteSpace(apiKey), apiKey ?? "", host ?? "https://eu.i.posthog.com");
                 }
             }
