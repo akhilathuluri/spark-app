@@ -82,6 +82,9 @@ public partial class ActionPanelWindow : Window
         // Lock out Deactivated-close until all activation/focus events settle
         _allowDeactivateClose = false;
 
+        // Reset animation state BEFORE Show() so the window doesn't flash its fully-open state for 1 frame
+        WindowGpuAnimationService.ResetOpenState(RootBorder, ScaleT, 0.92, TranslateT, 8);
+
         Show();
         Activate();
         SearchBox.Focus();
