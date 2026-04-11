@@ -18,6 +18,7 @@ public partial class ResultWindow : Window
     private readonly TextSanitizationService _textSanitizationService;
     private readonly UsageMetricsService _usageMetricsService;
     private CancellationTokenSource? _cts;
+    private CancellationTokenSource? _diffCts;  // cancels in-flight diff computation on Regenerate
     private string _resultText = string.Empty;
     private readonly StringBuilder _rawResultBuilder = new();
 
@@ -33,6 +34,12 @@ public partial class ResultWindow : Window
     private readonly StringBuilder _pendingUiBuffer = new();
     private readonly object _uiBufferLock = new();
     private System.Windows.Threading.DispatcherTimer? _uiFlushTimer;
+
+    // Returns the best available result text without O(n²) string allocation:
+    //   During streaming  → _rawResultBuilder has all tokens so far (no "+=" needed)
+    //   After stream ends → _resultText holds the final sanitised string
+    private string CurrentResultText =>
+        string.IsNullOrEmpty(_resultText) ? _rawResultBuilder.ToString() : _resultText;
 
     // Developer analytics
     private readonly AnalyticsService _analyticsService;
@@ -70,10 +77,13 @@ public partial class ResultWindow : Window
 
     public void ShowWithProcessing(ActionItem action, string selectedText)
     {
-        // Cancel and dispose any in-flight request from a previous use
+        // Cancel any in-flight AI stream and diff computation from a previous use.
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = null;
+        _diffCts?.Cancel();   // stop stale diff so it cannot overwrite the new result
+        _diffCts?.Dispose();
+        _diffCts = null;
         _resultText = string.Empty;
         _rawResultBuilder.Clear();
         ClearPendingUiBuffer();
@@ -209,7 +219,9 @@ public partial class ResultWindow : Window
                     // Use AsyncDiffService to avoid blocking on very long text
                     if (_isDiffAction)
                     {
-                        _ = BuildDiffAsync(_currentSelectedText, _resultText);  // fire-and-forget
+                        // Fresh CTS per result so Regenerate can cancel the stale diff.
+                        _diffCts = new CancellationTokenSource();
+                        _ = BuildDiffAsync(_currentSelectedText, _resultText, _diffCts.Token);
                         DiffToggleButton.Visibility = Visibility.Visible;
                     }
                 }
@@ -234,7 +246,11 @@ public partial class ResultWindow : Window
         }
         catch (OperationCanceledException)
         {
-            // Window was closed or reused before stream completed — expected, ignore
+            // Streaming cancelled (window reused or closed mid-stream).
+            // Balance the orphaned TrackActionStarted so PostHog metrics stay coherent.
+            if (chunkCount > 0)
+                _analyticsService.TrackActionCancelled(
+                    action.Id, action.IsBuiltIn, chunkCount, resultLength, sw.ElapsedMilliseconds, provider);
         }
         catch (Exception ex)
         {
@@ -272,14 +288,15 @@ public partial class ResultWindow : Window
 
     private void CopyButton_Click(object sender, RoutedEventArgs e)
     {
-        if (!string.IsNullOrEmpty(_resultText))
-            Clipboard.SetText(_resultText);
+        var textToCopy = CurrentResultText;
+        if (!string.IsNullOrEmpty(textToCopy))
+            Clipboard.SetText(textToCopy);
         AnimateClose(showCopied: true);
     }
 
     private void ReplaceButton_Click(object sender, RoutedEventArgs e)
     {
-        var text = _resultText;
+        var text = CurrentResultText;
 
         var validation = _textCapture.ValidateReplaceTarget();
         var settings = _settingsService.Load();
@@ -408,33 +425,35 @@ public partial class ResultWindow : Window
 
     // ── Diff rendering ───────────────────────────────────────────────────────
 
-    private static readonly SolidColorBrush DeleteFg =
-        new(System.Windows.Media.Color.FromRgb(0xFF, 0x6B, 0x6B));   // warm red
-    private static readonly SolidColorBrush InsertFg =
-        new(System.Windows.Media.Color.FromRgb(0x7E, 0xC8, 0x8B));   // muted green
-    private static readonly SolidColorBrush EqualFg  =
-        new(System.Windows.Media.Color.FromRgb(0x88, 0x88, 0xA8));   // muted purple-gray
-    private static readonly SolidColorBrush DeleteBg =
-        new(System.Windows.Media.Color.FromArgb(0x28, 0xFF, 0x40, 0x40));
-    private static readonly SolidColorBrush InsertBg =
-        new(System.Windows.Media.Color.FromArgb(0x28, 0x40, 0xFF, 0x60));
+    // Frozen brushes: calling Freeze() releases WPF change-notification hooks and
+    // allows GC to collect dependent objects that would otherwise be kept alive.
+    private static T Frozen<T>(T freezable) where T : System.Windows.Freezable
+        { freezable.Freeze(); return freezable; }
+
+    private static readonly SolidColorBrush DeleteFg = Frozen(new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xFF, 0x6B, 0x6B)));   // warm red
+    private static readonly SolidColorBrush InsertFg = Frozen(new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x7E, 0xC8, 0x8B)));   // muted green
+    private static readonly SolidColorBrush EqualFg  = Frozen(new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x88, 0x88, 0xA8)));   // muted purple-gray
+    private static readonly SolidColorBrush DeleteBg = Frozen(new SolidColorBrush(System.Windows.Media.Color.FromArgb(0x28, 0xFF, 0x40, 0x40)));
+    private static readonly SolidColorBrush InsertBg = Frozen(new SolidColorBrush(System.Windows.Media.Color.FromArgb(0x28, 0x40, 0xFF, 0x60)));
     /// <summary>
     /// Async wrapper for diff computation using AsyncDiffService (issue #10: large diff hang UI).
     /// For small diffs, computes immediately. For large diffs, uses thread pool.
     /// Fire-and-forget: result is rendered when available, even if window was closed.
     /// </summary>
-    private async Task BuildDiffAsync(string original, string result)
+    private async Task BuildDiffAsync(string original, string result, CancellationToken ct = default)
     {
         try
         {
-            // Use AsyncDiffService to avoid blocking UI on very long text
-            var chunks = await AsyncDiffService.ComputeAsync(original, result);
-            
-            // Check if window is still visible before rendering (user may have closed it)
-            if (!IsVisible) return;
+            var chunks = await AsyncDiffService.ComputeAsync(original, result, ct);
 
-            // Render on UI thread
+            // Skip render if window is hidden or Regenerate cancelled this diff.
+            if (!IsVisible || ct.IsCancellationRequested) return;
+
             Dispatcher.Invoke(() => RenderDiffWithChunks(chunks));
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelled by Regenerate — expected, nothing to render.
         }
         catch (Exception ex)
         {
@@ -528,8 +547,10 @@ public partial class ResultWindow : Window
 
     private void ExpandButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_currentAction == null || string.IsNullOrEmpty(_resultText)) return;
-        var editor = new FullEditorWindow(_resultText, _currentAction, _textCapture);
+        if (_currentAction == null) return;
+        var text = CurrentResultText;
+        if (string.IsNullOrEmpty(text)) return;
+        var editor = new FullEditorWindow(text, _currentAction, _textCapture);
         editor.Show();
     }
 
@@ -538,8 +559,11 @@ public partial class ResultWindow : Window
     protected override void OnKeyDown(KeyEventArgs e)
     {
         if (e.Key == Key.Escape) { AnimateClose(); e.Handled = true; }
-        if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control && !string.IsNullOrEmpty(_resultText))
-        { Clipboard.SetText(_resultText); AnimateClose(); e.Handled = true; }
+        if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            var textToCopy = CurrentResultText;
+            if (!string.IsNullOrEmpty(textToCopy)) { Clipboard.SetText(textToCopy); AnimateClose(); e.Handled = true; }
+        }
         base.OnKeyDown(e);
     }
 
@@ -604,8 +628,11 @@ public partial class ResultWindow : Window
             Interval = TimeSpan.FromMilliseconds(40)
         };
 
-        _uiFlushTimer.Tick += (_, _) => FlushPendingUiBuffer();
+        // Use a named method rather than a lambda to avoid an unnecessary closure.
+        _uiFlushTimer.Tick += OnUiFlushTimerTick;
     }
+
+    private void OnUiFlushTimerTick(object? sender, EventArgs e) => FlushPendingUiBuffer();
 
     private void FlushPendingUiBuffer()
     {
@@ -617,7 +644,9 @@ public partial class ResultWindow : Window
             _pendingUiBuffer.Clear();
         }
 
-        _resultText += append;
+        // Do NOT use "_resultText += append" here — that allocates a new string equal to the
+        // full response length every 40 ms (O(n²) GC pressure on long responses).
+        // CurrentResultText reads _rawResultBuilder directly during streaming instead.
         ResultText.AppendText(append);
         ResultText.ScrollToEnd();
     }

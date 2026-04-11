@@ -32,27 +32,46 @@ public sealed class UsageMetricsService
     {
         try
         {
-            var inputChars = inputText?.Length ?? 0;
+            var inputChars  = inputText?.Length  ?? 0;
             var outputChars = outputText?.Length ?? 0;
-            var inputTokens = EstimateTokens(inputChars);
+            var inputTokens  = EstimateTokens(inputChars);
             var outputTokens = EstimateTokens(outputChars);
             var cost = EstimateCostUsd(provider, model, inputTokens, outputTokens);
 
             var item = new ActionUsageRecord
             {
-                TimestampUtc = DateTime.UtcNow,
-                ActionId = actionId,
-                ActionName = actionName,
-                Provider = provider,
-                Model = model,
-                LatencyMs = Math.Max(0, latencyMs),
-                InputChars = inputChars,
-                OutputChars = outputChars,
-                EstimatedInputTokens = inputTokens,
+                TimestampUtc          = DateTime.UtcNow,
+                ActionId              = actionId,
+                ActionName            = actionName,
+                Provider              = provider,
+                Model                 = model,
+                LatencyMs             = Math.Max(0, latencyMs),
+                InputChars            = inputChars,
+                OutputChars           = outputChars,
+                EstimatedInputTokens  = inputTokens,
                 EstimatedOutputTokens = outputTokens,
-                EstimatedCostUsd = cost
+                EstimatedCostUsd      = cost
             };
 
+            // Fire-and-forget: dispatch disk I/O to a thread-pool thread so the caller
+            // (ResultWindow.ProcessAsync) is never blocked waiting for file writes.
+            // The lock inside PersistItem ensures thread-safe, sequential file access.
+            _ = Task.Run(() => PersistItem(item));
+        }
+        catch (Exception ex)
+        {
+            DebugLogService.LogError("UsageMetricsService.RecordAction", ex);
+        }
+    }
+
+    /// <summary>
+    /// Appends a single usage record to disk. Must run on a background thread.
+    /// Lock ensures only one write happens at a time even if multiple actions complete rapidly.
+    /// </summary>
+    private void PersistItem(ActionUsageRecord item)
+    {
+        try
+        {
             lock (_sync)
             {
                 var records = LoadRecordsUnsafe();
@@ -70,7 +89,7 @@ public sealed class UsageMetricsService
         }
         catch (Exception ex)
         {
-            DebugLogService.LogError("UsageMetricsService.RecordAction", ex);
+            DebugLogService.LogError("UsageMetricsService.PersistItem", ex);
         }
     }
 

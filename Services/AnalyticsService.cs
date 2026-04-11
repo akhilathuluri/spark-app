@@ -128,6 +128,26 @@ public sealed class AnalyticsService : IDisposable
             app_version = _appVersion
         });
 
+    /// <summary>
+    /// Called when the user closes ResultWindow mid-stream (OperationCanceledException).
+    /// Balances the orphaned TrackActionStarted so PostHog metrics remain coherent.
+    /// partial_chunks / partial_chars represent the partial response before cancellation.
+    /// </summary>
+    public void TrackActionCancelled(
+        string actionId, bool isBuiltIn,
+        int partialChunks, int partialChars, long durationMs,
+        string provider) =>
+        Capture("action_cancelled", new
+        {
+            action_id      = actionId,
+            is_builtin     = isBuiltIn,
+            partial_chunks = partialChunks,
+            partial_chars  = partialChars,
+            duration_ms    = durationMs,
+            provider,
+            app_version    = _appVersion
+        });
+
     public void TrackDiagnosticError(string context, string errorType, string correlationId, Dictionary<string, string>? metadata = null) =>
         Capture("diagnostic_error", new
         {

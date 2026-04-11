@@ -11,7 +11,7 @@ public sealed class UpdateNotificationService : IDisposable
 {
     // Empty string = no update check configured (safe default for local/dev builds).
     // Set updateApi.baseUrl in appsettings.json, or use Spark_API_BASE_URL env var.
-    private const string DefaultBaseUrl = "";
+    private const string DefaultBaseUrl = "https://www.spark-app.in";
 
     private readonly HttpClient _http;
     private readonly bool _ownsHttpClient;
