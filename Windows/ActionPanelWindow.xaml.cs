@@ -7,6 +7,7 @@ using Spark.Models;
 using Spark.Services;
 using System.Windows.Markup;
 using System.Windows.Data;
+using System.Windows.Interop;
 
 namespace Spark.Windows;
 
@@ -61,9 +62,18 @@ public partial class ActionPanelWindow : Window
         // Only close on deactivation after the guard period has elapsed
         Deactivated += (_, _) => { if (_allowDeactivateClose) AnimateClose(); };
         Loaded += OnLoaded;
+        SourceInitialized += OnSourceInitialized;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e) => SearchBox.Focus();
+
+    private void OnSourceInitialized(object? sender, EventArgs e)
+    {
+        // Keep the layered window composition surface explicitly transparent to avoid
+        // single-frame flash artifacts on some GPU/driver combinations.
+        if (PresentationSource.FromVisual(this) is HwndSource hwndSource)
+            hwndSource.CompositionTarget.BackgroundColor = Colors.Transparent;
+    }
 
     public void ShowWithText(string selectedText, System.Windows.Point cursorPos)
     {
@@ -82,15 +92,20 @@ public partial class ActionPanelWindow : Window
         // Lock out Deactivated-close until all activation/focus events settle
         _allowDeactivateClose = false;
 
-        // Reset animation state BEFORE Show() so the window doesn't flash its fully-open state for 1 frame
-        WindowGpuAnimationService.ResetOpenState(RootBorder, ScaleT, 0.92, TranslateT, 8);
+        // Prepare a stable visual state before Show() to avoid transparency flicker.
+        PrepareOpenVisualState();
 
         Show();
-        Activate();
-        SearchBox.Focus();
 
-        // AnimateOpen every time — Loaded only fires once, so this handles repeated show/hide cycles
-        AnimateOpen();
+        // Run focus and animation after first render tick to avoid one-frame layered-window flicker.
+        Dispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.Render,
+            new Action(() =>
+            {
+                Activate();
+                SearchBox.Focus();
+                AnimateOpen();
+            }));
 
         // Allow deactivation-close only after the dispatcher has fully processed all focus events
         Dispatcher.BeginInvoke(
@@ -276,9 +291,31 @@ public partial class ActionPanelWindow : Window
     }
 
     // ── Animations ──────────────────────────────────────────
+    private void PrepareOpenVisualState()
+    {
+        RootBorder.BeginAnimation(OpacityProperty, null);
+        ScaleT.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, null);
+        ScaleT.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, null);
+        TranslateT.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, null);
+
+        // Keep opacity stable at 1 to prevent transparent-layer flicker on show.
+        RootBorder.Opacity = 1;
+        ScaleT.ScaleX = 0.965;
+        ScaleT.ScaleY = 0.965;
+        TranslateT.Y = 4;
+    }
+
     private void AnimateOpen()
     {
-        WindowGpuAnimationService.AnimateOpen(RootBorder, ScaleT, 0.92, TranslateT, 8);
+        var dur = new Duration(TimeSpan.FromMilliseconds(130));
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+        var scaleAnim = new DoubleAnimation(0.965, 1.0, dur) { EasingFunction = ease };
+        ScaleT.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, scaleAnim);
+        ScaleT.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, scaleAnim);
+
+        var yAnim = new DoubleAnimation(4, 0, dur) { EasingFunction = ease };
+        TranslateT.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, yAnim);
     }
 
     private void AnimateClose(Action? onComplete = null)
@@ -287,25 +324,24 @@ public partial class ActionPanelWindow : Window
 
         _allowDeactivateClose = false; // prevent Deactivated re-entry during close
 
-        var dur = new Duration(TimeSpan.FromMilliseconds(160));
+        var dur = new Duration(TimeSpan.FromMilliseconds(110));
         var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
 
-        var opacityAnim = new DoubleAnimation(1, 0, dur) { EasingFunction = ease };
-        opacityAnim.Completed += (_, _) =>
+        var scaleAnim = new DoubleAnimation(1.0, 0.985, dur) { EasingFunction = ease };
+        scaleAnim.Completed += (_, _) =>
         {
             Hide();
-            // Clear animation holds so XAML base values (Opacity=0, Scale=0.92, Y=8) restore cleanly
-            // This ensures AnimateOpen starts from the correct XAML baseline on the next show
+            // Clear animation holds so the next show starts from a controlled state.
             RootBorder.BeginAnimation(OpacityProperty, null);
             ScaleT.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, null);
             ScaleT.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, null);
             TranslateT.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, null);
             onComplete?.Invoke();
         };
-        RootBorder.BeginAnimation(OpacityProperty, opacityAnim);
-
-        var scaleAnim = new DoubleAnimation(1.0, 0.94, dur) { EasingFunction = ease };
         ScaleT.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, scaleAnim);
         ScaleT.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, scaleAnim);
+
+        var yAnim = new DoubleAnimation(0, 2, dur) { EasingFunction = ease };
+        TranslateT.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, yAnim);
     }
 }

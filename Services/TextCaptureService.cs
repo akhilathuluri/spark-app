@@ -113,11 +113,11 @@ public class TextCaptureService
         public static CaptureTuning Load()
         {
             return new CaptureTuning(
-                ModifiersReleaseTimeoutMs: ReadInt("Spark_CAPTURE_RELEASE_TIMEOUT_MS", 500, 100, 3000),
-                BaseClipboardWaitMs: ReadInt("Spark_CAPTURE_BASE_WAIT_MS", 320, 120, 2000),
-                RetryClipboardWaitIncrementMs: ReadInt("Spark_CAPTURE_RETRY_INC_MS", 180, 20, 1000),
-                InterAttemptDelayMs: ReadInt("Spark_CAPTURE_INTER_ATTEMPT_MS", 45, 10, 500),
-                OverallCaptureTimeoutMs: ReadInt("Spark_CAPTURE_OVERALL_TIMEOUT_MS", 2200, 400, 8000));
+                ModifiersReleaseTimeoutMs: ReadInt("Spark_CAPTURE_RELEASE_TIMEOUT_MS", 240, 80, 3000),
+                BaseClipboardWaitMs: ReadInt("Spark_CAPTURE_BASE_WAIT_MS", 220, 80, 2000),
+                RetryClipboardWaitIncrementMs: ReadInt("Spark_CAPTURE_RETRY_INC_MS", 120, 20, 1000),
+                InterAttemptDelayMs: ReadInt("Spark_CAPTURE_INTER_ATTEMPT_MS", 24, 5, 500),
+                OverallCaptureTimeoutMs: ReadInt("Spark_CAPTURE_OVERALL_TIMEOUT_MS", 1400, 300, 8000));
         }
 
         private static int ReadInt(string name, int fallback, int min, int max)
@@ -196,24 +196,35 @@ public class TextCaptureService
         var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
         while (DateTime.UtcNow < deadline)
         {
-            await Task.Delay(20);
             try
             {
                 var currentSeq = GetClipboardSequenceNumber();
                 if (!Clipboard.ContainsText())
+                {
+                    await Task.Delay(12);
                     continue;
+                }
 
                 var text = Clipboard.GetText();
                 if (string.IsNullOrWhiteSpace(text))
+                {
+                    await Task.Delay(12);
                     continue;
+                }
 
                 // Ignore stale clipboard content when sequence didn't change.
                 if (currentSeq == previousSeq && string.Equals(text, previousClipboard, StringComparison.Ordinal))
+                {
+                    await Task.Delay(12);
                     continue;
+                }
 
                 return text;
             }
-            catch { }
+            catch
+            {
+                await Task.Delay(12);
+            }
         }
 
         return null;
@@ -288,9 +299,7 @@ public class TextCaptureService
             await Task.Delay(attempt == 0 ? 12 : Tuning.InterAttemptDelayMs);
 
             ReleaseModifiers();
-            await Task.Delay(8);
-
-            try { Clipboard.Clear(); } catch { }
+            await Task.Delay(6);
 
             strategies[attempt].Execute();
 

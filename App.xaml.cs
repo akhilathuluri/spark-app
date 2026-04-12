@@ -75,6 +75,7 @@ public partial class App : Application
         // Services
         _settingsService = new SettingsService();
         _actionsService = new ActionsService(_settingsService);
+        _ = _actionsService.GetAllActions(); // warm cache for first hotkey press
         _aiService = new AiService(_settingsService);
         _textCapture = new TextCaptureService();
         _historyService = new HistoryService();
@@ -327,7 +328,7 @@ public partial class App : Application
                 return;
             }
 
-            Dispatcher.Invoke(() =>
+            _ = Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, new Action(() =>
             {
                 if (_actionPanel.IsVisible)
                 {
@@ -335,7 +336,7 @@ public partial class App : Application
                     return;
                 }
                 _actionPanel.ShowWithText(selectedText, cursorPos);
-            });
+            }));
         }
         catch (Exception ex)
         {

@@ -11,7 +11,7 @@
         ShowInTaskbar="False"
         Topmost="True"
         ResizeMode="NoResize"
-        SizeToContent="Height"
+        SizeToContent="Manual"
         MaxHeight="480"
         SnapsToDevicePixels="True"
         UseLayoutRounding="True">
@@ -103,7 +103,7 @@
     <Border x:Name="RootBorder"
             Background="#16161E"
             CornerRadius="14"
-            Opacity="0"
+            Opacity="1"
             RenderTransformOrigin="0.5,0.5">
 
         <Border.RenderTransform>
@@ -167,8 +167,11 @@
                      BorderThickness="0"
                      Margin="6,4,6,4"
                      MaxHeight="300"
+                     ScrollViewer.CanContentScroll="True"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     VirtualizingStackPanel.IsVirtualizing="True"
+                     VirtualizingStackPanel.VirtualizationMode="Recycling"
                      ItemContainerStyle="{StaticResource ActionItemStyle}"
                      KeyDown="ActionsList_KeyDown"
                      MouseDoubleClick="ActionsList_MouseDoubleClick"
