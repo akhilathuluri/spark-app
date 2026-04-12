@@ -32,6 +32,8 @@ public class UiSmokeTests : IDisposable
         if (!File.Exists(buildExePath))
             throw new FileNotFoundException($"Cannot find Spark.exe at {buildExePath}. Build the main project first.");
 
+        Environment.SetEnvironmentVariable("Spark_SKIP_ONBOARDING", "1");
+
         // 2. Launch our target app natively
         _app = Application.Launch(buildExePath);
         _automation = new UIA3Automation();

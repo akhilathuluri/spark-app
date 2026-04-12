@@ -22,6 +22,7 @@ public partial class App : Application
     private DiagnosticsService? _diagnosticsService;
     private TextSanitizationService? _textSanitizationService;
     private UpdateNotificationService? _updateService;
+    private OnboardingStateService? _onboardingStateService;
     private System.Threading.Mutex? _mutex; // kept alive for the process lifetime
 
     // New diagnostic and resilience services (issues #1–5)
@@ -79,6 +80,7 @@ public partial class App : Application
         _historyService = new HistoryService();
         _usageMetricsService = new UsageMetricsService();
         _updateService = new UpdateNotificationService();
+        _onboardingStateService = new OnboardingStateService();
 
         // New diagnostic and resilience services (issues #1–5)
         _hotkeyThrottle = new HotkeyThrottleService();
@@ -167,7 +169,12 @@ public partial class App : Application
             _trayService.ShowBalloon("Spark settings recovered", _settingsService.LastRecoveryMessage!);
         }
 
-        if (!settings.OnboardingCompleted)
+        var skipOnboarding = string.Equals(
+            Environment.GetEnvironmentVariable("Spark_SKIP_ONBOARDING"),
+            "1",
+            StringComparison.OrdinalIgnoreCase);
+
+        if (!skipOnboarding && _onboardingStateService?.ShouldShowOnboarding(settings) == true)
         {
             _hotkeyService?.SetSuspended(true);
             _onboardingWindow = new OnboardingWizardWindow(
@@ -550,15 +557,10 @@ public partial class App : Application
 
     private void CompleteOnboarding()
     {
-        if (_settingsService is null)
+        if (_settingsService is null || _onboardingStateService is null)
             return;
 
-        var settings = _settingsService.Load();
-        if (settings.OnboardingCompleted)
-            return;
-
-        settings.OnboardingCompleted = true;
-        _settingsService.Save(settings);
+        _onboardingStateService.MarkCompleted(_settingsService);
     }
 }
 
