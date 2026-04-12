@@ -11,6 +11,7 @@ public enum IconKey
     History,
     Settings,
     UsageDashboard,
+    DeveloperNotifications,
     Updates,
     MoreInfo,
     Exit,
@@ -41,6 +42,7 @@ public sealed class IconService
         [IconKey.CustomAction] = "\uE710",
         [IconKey.History] = "\uE81C",
         [IconKey.Settings] = "\uE713",
+        [IconKey.DeveloperNotifications] = "\uE7F4",
         [IconKey.Updates] = "\uE895",
         [IconKey.MoreInfo] = "\uE946",
         [IconKey.Exit] = "\uE8BB",
@@ -252,6 +254,14 @@ public sealed class IconService
                 g.DrawLine(pen, size * 0.3f, size * 0.78f, size * 0.3f, size * 0.46f);
                 g.DrawLine(pen, size * 0.5f, size * 0.78f, size * 0.5f, size * 0.3f);
                 g.DrawLine(pen, size * 0.7f, size * 0.78f, size * 0.7f, size * 0.56f);
+                break;
+
+            case IconKey.DeveloperNotifications:
+                g.DrawArc(pen, size * 0.26f, size * 0.22f, size * 0.48f, size * 0.46f, 200, 140);
+                g.DrawLine(pen, size * 0.28f, size * 0.52f, size * 0.72f, size * 0.52f);
+                g.DrawLine(pen, size * 0.34f, size * 0.52f, size * 0.34f, size * 0.62f);
+                g.DrawLine(pen, size * 0.66f, size * 0.52f, size * 0.66f, size * 0.62f);
+                g.FillEllipse(fill, size * 0.44f, size * 0.64f, size * 0.12f, size * 0.12f);
                 break;
 
             case IconKey.Updates:

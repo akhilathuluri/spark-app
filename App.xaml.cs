@@ -21,6 +21,7 @@ public partial class App : Application
     private AnalyticsService? _analyticsService;
     private DiagnosticsService? _diagnosticsService;
     private TextSanitizationService? _textSanitizationService;
+    private DeveloperNotificationService? _developerNotificationService;
     private UpdateNotificationService? _updateService;
     private OnboardingStateService? _onboardingStateService;
     private System.Threading.Mutex? _mutex; // kept alive for the process lifetime
@@ -46,12 +47,16 @@ public partial class App : Application
     private HistoryWindow? _historyWindow;
     private MoreInfoWindow? _moreInfoWindow;
     private UpdatesWindow? _updatesWindow;
+    private DeveloperNotificationsWindow? _developerNotificationsWindow;
     private UsageDashboardWindow? _usageDashboardWindow;
     private OnboardingWizardWindow? _onboardingWindow;
     private SettingsWindow? _settingsWindow;
+    private IReadOnlyList<DeveloperNotification> _latestDeveloperNotifications = Array.Empty<DeveloperNotification>();
     private AppUpdateInfo? _latestUpdateInfo;
+    private string? _lastNotifiedDeveloperNotificationId;
     private string? _lastNotifiedUpdateVersion;
     private System.Windows.Threading.DispatcherTimer? _updateCheckTimer;
+    private System.Windows.Threading.DispatcherTimer? _developerNotificationsTimer;
 
     private static ImageSource? _cachedAppIcon;
 
@@ -80,6 +85,7 @@ public partial class App : Application
         _textCapture = new TextCaptureService();
         _historyService = new HistoryService();
         _usageMetricsService = new UsageMetricsService();
+        _developerNotificationService = new DeveloperNotificationService();
         _updateService = new UpdateNotificationService();
         _onboardingStateService = new OnboardingStateService();
 
@@ -108,6 +114,7 @@ public partial class App : Application
         _trayService.OpenSettingsRequested += OpenSettings;
         _trayService.OpenHistoryRequested  += OpenHistory;
         _trayService.OpenUsageDashboardRequested += OpenUsageDashboard;
+        _trayService.OpenDeveloperNotificationsRequested += OpenDeveloperNotifications;
         _trayService.OpenUpdatesRequested += OpenUpdates;
         _trayService.OpenMoreInfoRequested += OpenMoreInfo;
         _trayService.ExitRequested += () => Shutdown();
@@ -142,6 +149,7 @@ public partial class App : Application
         _historyWindow = new HistoryWindow(_historyService!);
         _moreInfoWindow = new MoreInfoWindow(DeveloperInfo.Default);
         _updatesWindow = new UpdatesWindow();
+        _developerNotificationsWindow = new DeveloperNotificationsWindow();
         _usageDashboardWindow = new UsageDashboardWindow(_usageMetricsService!);
 
         ApplyWindowIcon(_resultWindow);
@@ -149,9 +157,11 @@ public partial class App : Application
         ApplyWindowIcon(_historyWindow);
         ApplyWindowIcon(_moreInfoWindow);
         ApplyWindowIcon(_updatesWindow);
+        ApplyWindowIcon(_developerNotificationsWindow);
         ApplyWindowIcon(_usageDashboardWindow);
 
         _updatesWindow.RefreshRequested += OnRefreshUpdatesRequested;
+        _developerNotificationsWindow.RefreshRequested += OnRefreshDeveloperNotificationsRequested;
 
         // Show balloon on first start or if no API key set
         if (string.IsNullOrWhiteSpace(settings.OpenRouter.ApiKey) && string.IsNullOrWhiteSpace(settings.Groq.ApiKey))
@@ -217,6 +227,9 @@ public partial class App : Application
 
         _ = CheckForUpdatesAsync(showUpToDateBalloon: false);
         StartUpdateCheckTimer();
+
+        _ = CheckDeveloperNotificationsAsync(forceBalloon: false);
+        StartDeveloperNotificationsTimer();
     }
 
     private void StartUpdateCheckTimer()
@@ -228,6 +241,17 @@ public partial class App : Application
 
         _updateCheckTimer.Tick += async (_, _) => await CheckForUpdatesAsync(showUpToDateBalloon: false);
         _updateCheckTimer.Start();
+    }
+
+    private void StartDeveloperNotificationsTimer()
+    {
+        _developerNotificationsTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMinutes(15)
+        };
+
+        _developerNotificationsTimer.Tick += async (_, _) => await CheckDeveloperNotificationsAsync(forceBalloon: false);
+        _developerNotificationsTimer.Start();
     }
 
     private async Task CheckForUpdatesAsync(bool showUpToDateBalloon)
@@ -272,6 +296,41 @@ public partial class App : Application
 
         _updatesWindow.SetCheckingState();
         await CheckForUpdatesAsync(showUpToDateBalloon: true);
+    }
+
+    private async Task CheckDeveloperNotificationsAsync(bool forceBalloon)
+    {
+        if (_developerNotificationService is null || _trayService is null)
+            return;
+
+        var notifications = await _developerNotificationService.GetActiveNotificationsAsync();
+        _latestDeveloperNotifications = notifications;
+
+        _developerNotificationsWindow?.SetNotifications(notifications);
+        _trayService.SetDeveloperNotificationsAvailable(notifications.Count);
+
+        if (notifications.Count == 0)
+        {
+            if (forceBalloon)
+                _trayService.ShowBalloon("Spark", "No active developer notifications.");
+            return;
+        }
+
+        var newestByTime = notifications.OrderByDescending(n => n.CreatedAtLocal).First();
+        if (forceBalloon || !string.Equals(_lastNotifiedDeveloperNotificationId, newestByTime.Id, StringComparison.Ordinal))
+        {
+            _lastNotifiedDeveloperNotificationId = newestByTime.Id;
+            _trayService.ShowBalloon("Spark developer notification", newestByTime.Title, System.Windows.Forms.ToolTipIcon.Info);
+        }
+    }
+
+    private async void OnRefreshDeveloperNotificationsRequested()
+    {
+        if (_developerNotificationsWindow is null)
+            return;
+
+        _developerNotificationsWindow.SetCheckingState();
+        await CheckDeveloperNotificationsAsync(forceBalloon: true);
     }
 
     private async void OnHotkeyPressed()
@@ -401,13 +460,18 @@ public partial class App : Application
         if (_updatesWindow is not null)
             _updatesWindow.RefreshRequested -= OnRefreshUpdatesRequested;
 
+        if (_developerNotificationsWindow is not null)
+            _developerNotificationsWindow.RefreshRequested -= OnRefreshDeveloperNotificationsRequested;
+
         _updateCheckTimer?.Stop();
+        _developerNotificationsTimer?.Stop();
 
         CloseWindow(_actionPanel);
         CloseWindow(_resultWindow);
         CloseWindow(_historyWindow);
         CloseWindow(_moreInfoWindow);
         CloseWindow(_updatesWindow);
+        CloseWindow(_developerNotificationsWindow);
         CloseWindow(_usageDashboardWindow);
         CloseWindow(_onboardingWindow);
         CloseWindow(_hotkeyWindow);
@@ -416,6 +480,7 @@ public partial class App : Application
         _trayService?.Dispose();
         _aiService?.Dispose();
         _analyticsService?.Dispose();
+        _developerNotificationService?.Dispose();
         _updateService?.Dispose();
 
         _textCapture = null;
@@ -536,6 +601,31 @@ public partial class App : Application
 
             if (_latestUpdateInfo is null)
                 _ = CheckForUpdatesAsync(showUpToDateBalloon: false);
+        });
+    }
+
+    private void OpenDeveloperNotifications()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            if (_developerNotificationsWindow is null)
+                return;
+
+            if (_developerNotificationsWindow.IsVisible)
+            {
+                _developerNotificationsWindow.Activate();
+                return;
+            }
+
+            if (_latestDeveloperNotifications.Count == 0)
+                _developerNotificationsWindow.SetCheckingState();
+            else
+                _developerNotificationsWindow.SetNotifications(_latestDeveloperNotifications);
+
+            _developerNotificationsWindow.ShowPanel();
+
+            if (_latestDeveloperNotifications.Count == 0)
+                _ = CheckDeveloperNotificationsAsync(forceBalloon: false);
         });
     }
 

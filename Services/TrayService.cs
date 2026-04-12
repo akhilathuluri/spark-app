@@ -12,11 +12,13 @@ public class TrayService : IDisposable
     private readonly IconService _iconService = new();
     private NotifyIcon? _notifyIcon;
     private ContextMenuStrip? _contextMenu;
+    private ToolStripMenuItem? _developerNotificationsItem;
     private ToolStripMenuItem? _updatesItem;
 
     public event Action? OpenSettingsRequested;
     public event Action? OpenHistoryRequested;
     public event Action? OpenUsageDashboardRequested;
+    public event Action? OpenDeveloperNotificationsRequested;
     public event Action? OpenUpdatesRequested;
     public event Action? OpenMoreInfoRequested;
     public event Action? ExitRequested;
@@ -57,6 +59,13 @@ public class TrayService : IDisposable
         };
         usageItem.Click += (_, _) => OpenUsageDashboardRequested?.Invoke();
         _contextMenu.Items.Add(usageItem);
+
+        _developerNotificationsItem = new ToolStripMenuItem("Developer Notifications")
+        {
+            Image = _iconService.CreateMenuImage(IconKey.DeveloperNotifications)
+        };
+        _developerNotificationsItem.Click += (_, _) => OpenDeveloperNotificationsRequested?.Invoke();
+        _contextMenu.Items.Add(_developerNotificationsItem);
 
         _updatesItem = new ToolStripMenuItem("Updates Available")
         {
@@ -114,6 +123,16 @@ public class TrayService : IDisposable
             return;
 
         _updatesItem.Visible = false;
+    }
+
+    public void SetDeveloperNotificationsAvailable(int count)
+    {
+        if (_developerNotificationsItem is null)
+            return;
+
+        _developerNotificationsItem.Text = count > 0
+            ? $"Developer Notifications ({count})"
+            : "Developer Notifications";
     }
 
     public void Dispose()
