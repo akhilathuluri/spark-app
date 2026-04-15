@@ -109,10 +109,15 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="🚀" FontSize="17" Margin="0,0,8,0"/>
+                        <TextBlock x:Name="OnboardingIconText"
+                                   Text=""
+                                   FontSize="18"
+                                   FontFamily="Segoe Fluent Icons"
+                                   Foreground="#7C6AF7"
+                                   Margin="0,0,8,0"/>
                         <StackPanel>
                             <TextBlock Text="Welcome to Spark" FontSize="16" FontWeight="SemiBold" Foreground="#E0E0F0"/>
-                            <TextBlock Text="Get setup in under 2 minutes" FontSize="11" Foreground="#8080B0"/>
+                            <TextBlock Text="2 quick checks. About 1 minute." FontSize="11" Foreground="#8080B0"/>
                         </StackPanel>
                     </StackPanel>
                     <Button Grid.Column="1" Content="✕" Click="SkipButton_Click"
@@ -127,39 +132,22 @@
 
                     <Border Background="#1A1A28" CornerRadius="10" Padding="14,12" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="STEP 1 · API CONFIGURATION" Style="{StaticResource SectionHeader}"/>
-                            <TextBlock x:Name="ApiStatusText" Text="Status: Pending" Style="{StaticResource CardLabel}"/>
-                            <TextBlock Text="Open settings once, add API key and model, save, then click Validate." Style="{StaticResource CardLabel}" Margin="0,6,0,8"/>
+                            <TextBlock Text="STEP 1 · CONNECT AI + HOTKEY" Style="{StaticResource SectionHeader}"/>
+                            <TextBlock x:Name="ApiStatusText" Text="AI: Not ready" Style="{StaticResource CardLabel}"/>
+                            <TextBlock x:Name="HotkeyStatusText" Text="Shortcut: Not ready" Style="{StaticResource CardLabel}" Margin="0,2,0,0"/>
+                            <TextBlock Text="Open Settings, add your API key, choose a model, and confirm your shortcut." Style="{StaticResource CardLabel}" Margin="0,6,0,8"/>
                             <WrapPanel>
                                 <Button Content="Open Settings" Style="{StaticResource SecondaryButton}" Click="OpenSettingsButton_Click" Margin="0,0,8,0"/>
-                                <Button Content="Validate API" Style="{StaticResource SecondaryButton}" Click="ValidateApiButton_Click"/>
+                                <Button Content="Check Setup" Style="{StaticResource SecondaryButton}" Click="ValidateApiButton_Click"/>
                             </WrapPanel>
-                        </StackPanel>
-                    </Border>
-
-                    <Border Background="#1A1A28" CornerRadius="10" Padding="14,12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="STEP 2 · HOTKEY CHECK" Style="{StaticResource SectionHeader}"/>
-                            <TextBlock x:Name="HotkeyStatusText" Text="Status: Pending" Style="{StaticResource CardLabel}"/>
-                            <TextBlock Text="Spark listens globally. We verify your configured shortcut is valid and saved." Style="{StaticResource CardLabel}" Margin="0,6,0,8"/>
-                            <Button Content="Validate Hotkey" Style="{StaticResource SecondaryButton}" Click="ValidateHotkeyButton_Click" Width="140"/>
-                        </StackPanel>
-                    </Border>
-
-                    <Border Background="#1A1A28" CornerRadius="10" Padding="14,12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="STEP 3 · CAPTURE TEST" Style="{StaticResource SectionHeader}"/>
-                            <TextBlock x:Name="CaptureStatusText" Text="Status: Pending" Style="{StaticResource CardLabel}"/>
-                            <TextBlock Text="Select text in any app. Click Start; Spark will wait 3 seconds and attempt capture." Style="{StaticResource CardLabel}" Margin="0,6,0,8"/>
-                            <Button x:Name="CaptureTestButton" Content="Start Capture Test" Style="{StaticResource SecondaryButton}" Click="CaptureTestButton_Click" Width="160"/>
                         </StackPanel>
                     </Border>
 
                     <Border Background="#1A1A28" CornerRadius="10" Padding="14,12">
                         <StackPanel>
-                            <TextBlock Text="STEP 4 · QUICK AI SUCCESS TEST" Style="{StaticResource SectionHeader}"/>
-                            <TextBlock x:Name="AiStatusText" Text="Status: Pending" Style="{StaticResource CardLabel}"/>
-                            <TextBlock Text="Runs a quick transform so you leave onboarding with a real success." Style="{StaticResource CardLabel}" Margin="0,6,0,8"/>
+                            <TextBlock Text="STEP 3 · RUN QUICK AI TEST" Style="{StaticResource SectionHeader}"/>
+                            <TextBlock x:Name="AiStatusText" Text="AI test: Not run" Style="{StaticResource CardLabel}"/>
+                            <TextBlock Text="Runs one quick rewrite so you can verify everything works." Style="{StaticResource CardLabel}" Margin="0,6,0,8"/>
                             <WrapPanel>
                                 <Button x:Name="QuickTestButton" Content="Run Quick AI Test" Style="{StaticResource SecondaryButton}" Click="QuickTestButton_Click" Margin="0,0,8,0" Width="150"/>
                                 <TextBlock x:Name="ProgressText" VerticalAlignment="Center" Foreground="#9C9CC8" FontSize="12"/>
@@ -188,9 +176,12 @@
                         <ColumnDefinition Width="8"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="FooterText" Text="Complete at least API + capture + quick test for best first run." FontSize="11" Foreground="#4A4A72" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Vertical" VerticalAlignment="Center">
+                        <TextBlock x:Name="FooterText" Text="Finish unlocks after both checks pass." FontSize="11" Foreground="#4A4A72"/>
+                        <TextBlock x:Name="SetupProgressText" Text="Progress: 0 of 2 complete" FontSize="11" Foreground="#66669A" Margin="0,2,0,0"/>
+                    </StackPanel>
                     <Button Grid.Column="1" Content="Skip" Style="{StaticResource SecondaryButton}" Click="SkipButton_Click"/>
-                    <Button x:Name="FinishButton" Grid.Column="3" Content="Finish Setup" Style="{StaticResource PrimaryButton}" Click="FinishButton_Click" IsEnabled="False"/>
+                    <Button x:Name="FinishButton" Grid.Column="3" Content="Complete Setup" Style="{StaticResource PrimaryButton}" Click="FinishButton_Click" IsEnabled="False"/>
                 </Grid>
             </Border>
         </Grid>

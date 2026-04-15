@@ -7,14 +7,12 @@ namespace Spark.Windows;
 public partial class OnboardingWizardWindow : Window
 {
     private readonly SettingsService _settingsService;
-    private readonly TextCaptureService _textCaptureService;
     private readonly AiService _aiService;
     private readonly Action _onCompleted;
     private bool _completionRaised;
 
     private bool _apiValid;
     private bool _hotkeyValid;
-    private bool _captureValid;
     private bool _aiValid;
 
     public OnboardingWizardWindow(
@@ -24,11 +22,15 @@ public partial class OnboardingWizardWindow : Window
         Action onCompleted)
     {
         _settingsService = settingsService;
-        _textCaptureService = textCaptureService;
         _aiService = aiService;
         _onCompleted = onCompleted;
 
         InitializeComponent();
+
+        var iconService = new IconService();
+        OnboardingIconText.Text = iconService.GetGlyph(IconKey.Improve);
+        if (string.IsNullOrWhiteSpace(OnboardingIconText.Text))
+            OnboardingIconText.Text = iconService.GetGlyph(IconKey.CustomAction);
     }
 
     private void OpenSettingsButton_Click(object sender, RoutedEventArgs e)
@@ -43,7 +45,11 @@ public partial class OnboardingWizardWindow : Window
         ValidateHotkey();
     }
 
-    private void ValidateApiButton_Click(object sender, RoutedEventArgs e) => ValidateApi();
+    private void ValidateApiButton_Click(object sender, RoutedEventArgs e)
+    {
+        ValidateApi();
+        ValidateHotkey();
+    }
 
     private void ValidateApi()
     {
@@ -60,13 +66,11 @@ public partial class OnboardingWizardWindow : Window
 
         _apiValid = keyOk && modelOk;
         ApiStatusText.Text = _apiValid
-            ? $"Status: [OK] {provider} key + model configured"
-            : $"Status: Missing {provider} key/model";
+            ? $"AI: Ready ({provider})"
+            : $"AI: Add {provider} API key and model";
 
         UpdateFinishState();
     }
-
-    private void ValidateHotkeyButton_Click(object sender, RoutedEventArgs e) => ValidateHotkey();
 
     private void ValidateHotkey()
     {
@@ -76,44 +80,10 @@ public partial class OnboardingWizardWindow : Window
                        && !string.IsNullOrWhiteSpace(settings.HotkeyKey);
 
         HotkeyStatusText.Text = _hotkeyValid
-            ? $"Status: [OK] {settings.HotkeyModifiers}+{settings.HotkeyKey}"
-            : "Status: Missing hotkey";
+            ? $"Shortcut: Ready ({settings.HotkeyModifiers}+{settings.HotkeyKey})"
+            : "Shortcut: Choose a hotkey in Settings";
 
         UpdateFinishState();
-    }
-
-    private async void CaptureTestButton_Click(object sender, RoutedEventArgs e)
-    {
-        CaptureTestButton.IsEnabled = false;
-        ProgressText.Text = "Select text in any app now. Starting in 3s...";
-
-        await Task.Delay(700);
-        Hide();
-
-        try
-        {
-            await Task.Delay(3000);
-            var text = await _textCaptureService.GetSelectedTextAsync();
-
-            _captureValid = !string.IsNullOrWhiteSpace(text);
-            CaptureStatusText.Text = _captureValid
-                ? $"Status: [OK] Captured {_textCaptureService.LastDiagnostics.ProcessName} ({text!.Length} chars)"
-                : "Status: Capture failed. Select text and retry.";
-        }
-        catch (Exception ex)
-        {
-            _captureValid = false;
-            CaptureStatusText.Text = "Status: Capture failed due to runtime error.";
-            DebugLogService.LogError("OnboardingWizard.CaptureTest", ex);
-        }
-        finally
-        {
-            Show();
-            Activate();
-            CaptureTestButton.IsEnabled = true;
-            ProgressText.Text = string.Empty;
-            UpdateFinishState();
-        }
     }
 
     private async void QuickTestButton_Click(object sender, RoutedEventArgs e)
@@ -131,8 +101,8 @@ public partial class OnboardingWizardWindow : Window
             _aiValid = !string.IsNullOrWhiteSpace(response);
 
             AiStatusText.Text = _aiValid
-                ? "Status: [OK] Quick AI test succeeded"
-                : "Status: Quick AI test returned empty output";
+                ? "AI test: Success"
+                : "AI test: No output returned";
 
             ResultPreviewBox.Text = string.IsNullOrWhiteSpace(response)
                 ? "No output returned."
@@ -141,7 +111,7 @@ public partial class OnboardingWizardWindow : Window
         catch (Exception ex)
         {
             _aiValid = false;
-            AiStatusText.Text = "Status: Quick AI test failed (check API key/model).";
+            AiStatusText.Text = "AI test: Failed. Check key/model in Settings.";
             ResultPreviewBox.Text = ex.Message;
             DebugLogService.LogError("OnboardingWizard.QuickTest", ex);
         }
@@ -155,7 +125,16 @@ public partial class OnboardingWizardWindow : Window
 
     private void UpdateFinishState()
     {
-        FinishButton.IsEnabled = _apiValid && _hotkeyValid && _captureValid && _aiValid;
+        var completed = 0;
+        if (_apiValid && _hotkeyValid) completed++;
+        if (_aiValid) completed++;
+
+        SetupProgressText.Text = $"Progress: {completed} of 2 complete";
+        FooterText.Text = completed == 2
+            ? "All steps complete. You can finish now."
+            : "Finish unlocks after both checks pass.";
+
+        FinishButton.IsEnabled = _apiValid && _hotkeyValid && _aiValid;
     }
 
     private void FinishButton_Click(object sender, RoutedEventArgs e)
