@@ -149,16 +149,30 @@ public class TextCaptureService
 
     private static bool ReleaseModifiers()
     {
-        var inputs = new[]
-        {
-            KeyUp(VK_SHIFT),
-            KeyUp(VK_ALT),
-            KeyUp(VK_LWIN),
-            KeyUp(VK_RWIN),
-            KeyUp(VK_CONTROL)
-        };
-        return TrySendInput(inputs, "ReleaseModifiers");
+        // Releasing modifiers that are not currently held can trigger unwanted UI modes
+        // in some apps (for example, synthetic Alt-up can open keytips in Notepad).
+        // Only release keys that are actually down right now.
+        var inputs = new List<INPUT>(5);
+
+        if (IsKeyHeld(VK_SHIFT))
+            inputs.Add(KeyUp(VK_SHIFT));
+
+        if (IsKeyHeld(VK_ALT))
+            inputs.Add(KeyUp(VK_ALT));
+
+        if (IsKeyHeld(VK_LWIN))
+            inputs.Add(KeyUp(VK_LWIN));
+
+        if (IsKeyHeld(VK_RWIN))
+            inputs.Add(KeyUp(VK_RWIN));
+
+        if (IsKeyHeld(VK_CONTROL))
+            inputs.Add(KeyUp(VK_CONTROL));
+
+        return TrySendInput(inputs.ToArray(), "ReleaseModifiers");
     }
+
+    private static bool IsKeyHeld(int virtualKey) => GetAsyncKeyState(virtualKey) < 0;
 
     private static bool TrySendInput(INPUT[] inputs, string context)
     {
