@@ -148,8 +148,12 @@ public partial class ResultWindow : Window
         var correlationId = _diagnosticsService?.NewCorrelationId() ?? Guid.NewGuid().ToString("N");
         _cts = new CancellationTokenSource();
         bool firstVisibleToken = true;
+        bool hadLeadingNonVisibleTokens = false;
+        const int SmoothRevealDelayMs = 60;
+        const int LiveFlushIntervalMs = 35;
         EnsureUiFlushTimer();
         _uiFlushTimer!.Start();
+        var liveFlushStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         // Analytics: load provider info and start timer before any await
         var sw         = System.Diagnostics.Stopwatch.StartNew();
@@ -169,7 +173,11 @@ public partial class ResultWindow : Window
 
                 var t = _textSanitizationService.SanitizeChunk(token);
                 if (string.IsNullOrEmpty(t))
+                {
+                    if (firstVisibleToken)
+                        hadLeadingNonVisibleTokens = true;
                     continue;
+                }
 
                 bool flushFirstVisibleChunkNow = false;
 
@@ -179,11 +187,19 @@ public partial class ResultWindow : Window
                 {
                     var visible = t.TrimStart();
                     if (string.IsNullOrEmpty(visible))
+                    {
+                        hadLeadingNonVisibleTokens = true;
                         continue;
+                    }
 
                     t = visible;
                     firstVisibleToken = false;
                     flushFirstVisibleChunkNow = true;
+
+                    // If the stream started with only non-visible chunks, hold a tiny
+                    // beat before reveal so the transition feels less abrupt.
+                    if (hadLeadingNonVisibleTokens)
+                        await Task.Delay(SmoothRevealDelayMs, _cts.Token);
                 }
 
                 // First token flips from thinking state to result state once.
@@ -210,6 +226,19 @@ public partial class ResultWindow : Window
                         FlushPendingUiBuffer();
                     else
                         _ = Dispatcher.BeginInvoke(FlushPendingUiBuffer);
+
+                    liveFlushStopwatch.Restart();
+                }
+                else if (liveFlushStopwatch.ElapsedMilliseconds >= LiveFlushIntervalMs)
+                {
+                    // Fallback deterministic flush cadence. DispatcherTimer can be delayed
+                    // under heavy UI load, which makes streamed tokens appear in one burst.
+                    if (Dispatcher.CheckAccess())
+                        FlushPendingUiBuffer();
+                    else
+                        _ = Dispatcher.BeginInvoke(FlushPendingUiBuffer);
+
+                    liveFlushStopwatch.Restart();
                 }
             }
 
