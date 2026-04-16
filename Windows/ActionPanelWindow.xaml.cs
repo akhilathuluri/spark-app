@@ -75,11 +75,11 @@ public partial class ActionPanelWindow : Window
             hwndSource.CompositionTarget.BackgroundColor = Colors.Transparent;
     }
 
-    public void ShowWithText(string selectedText, System.Windows.Point cursorPos)
+    public void ShowWithText(string selectedText, System.Windows.Point cursorPos, string? sourceProcessName = null)
     {
         _selectedText = selectedText;
         _cursorPos    = cursorPos;
-        _allActions   = _actionsService.GetSmartSuggestions(selectedText);
+        _allActions   = _actionsService.GetSmartSuggestions(selectedText, sourceProcessName);
 
         var settings = _settingsService.Load();
         ProviderLabel.Text = settings.ActiveProvider;

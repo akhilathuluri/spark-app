@@ -1,4 +1,5 @@
 using Spark.Models;
+using Spark.Services.Recommendations;
 
 namespace Spark.Services;
 
@@ -6,6 +7,7 @@ public class ActionsService
 {
     private readonly SettingsService _settingsService;
     private readonly IconService _iconService = new();
+    private readonly ActionRecommendationEngine _recommendationEngine = new();
     private AppSettings? _settingsCache;
 
     // Called by App.xaml.cs after the user saves settings, so the next
@@ -61,51 +63,11 @@ public class ActionsService
         return all;
     }
 
-    public List<ActionItem> GetSmartSuggestions(string text)
+    public List<ActionItem> GetSmartSuggestions(string text, string? sourceProcessName = null)
     {
         var all = GetAllActions();
 
-        // Smart detection ordering
-        if (IsCode(text))
-            return Reorder(all, "explain_code", "rewrite", "fix_grammar");
-
-        if (IsEmail(text))
-            return Reorder(all, "change_tone", "fix_grammar", "shorten", "improve");
-
-        if (IsLongParagraph(text))
-            return Reorder(all, "summarize", "bullet_points", "shorten", "improve");
-
-        if (IsShortSentence(text))
-            return Reorder(all, "fix_grammar", "rewrite", "improve", "expand");
-
-        return all;
+        var context = ActionRecommendationContext.Create(text, sourceProcessName);
+        return _recommendationEngine.RankActions(all, context);
     }
-
-    private static List<ActionItem> Reorder(List<ActionItem> all, params string[] firstIds)
-    {
-        var result = new List<ActionItem>();
-        foreach (var id in firstIds)
-        {
-            var item = all.FirstOrDefault(a => a.Id == id);
-            if (item != null) result.Add(item);
-        }
-        result.AddRange(all.Where(a => !firstIds.Contains(a.Id)));
-        return result;
-    }
-
-    private static bool IsCode(string text)
-    {
-        var codeIndicators = new[] { "{", "}", "=>", "->", "def ", "func ", "class ", "import ", "using ", "var ", "const ", "let ", "function ", "#include", "public ", "private ", "return ", "if (", "for (", "while (" };
-        return codeIndicators.Any(indicator => text.Contains(indicator));
-    }
-
-    private static bool IsEmail(string text)
-    {
-        var emailIndicators = new[] { "Dear ", "Hi ", "Hello ", "Best regards", "Thanks", "Sincerely", "Subject:" };
-        return emailIndicators.Any(indicator => text.Contains(indicator, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static bool IsLongParagraph(string text) => text.Length > 300 && text.Split('.').Length > 3;
-
-    private static bool IsShortSentence(string text) => text.Length < 150;
 }

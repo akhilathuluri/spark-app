@@ -394,7 +394,7 @@ public partial class App : Application
                     _actionPanel.Hide();
                     return;
                 }
-                _actionPanel.ShowWithText(selectedText, cursorPos);
+                _actionPanel.ShowWithText(selectedText, cursorPos, _textCapture.LastSelectionContext?.ProcessName);
             }));
         }
         catch (Exception ex)

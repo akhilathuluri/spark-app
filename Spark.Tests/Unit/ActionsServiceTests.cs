@@ -19,6 +19,36 @@ public class ActionsServiceTests
         Assert.Equal("rewrite", actions[1].Id);
         Assert.Equal("fix_grammar", actions[2].Id);
     }
+
+    [Fact]
+    public void GetSmartSuggestions_PrioritizesEmailTone_ForOfficeAppContext()
+    {
+        var settingsPath = Path.Combine(Path.GetTempPath(), $"Spark-test-{Guid.NewGuid()}", "settings.json");
+        var settingsService = new SettingsService(settingsPath, new InMemorySecretStore());
+        var sut = new ActionsService(settingsService);
+
+        var text = "Please review this update and share your thoughts by Friday.";
+        var actions = sut.GetSmartSuggestions(text, "OUTLOOK");
+
+        Assert.True(actions.Count > 3);
+        Assert.Equal("change_tone", actions[0].Id);
+        Assert.Equal("fix_grammar", actions[1].Id);
+    }
+
+    [Fact]
+    public void GetSmartSuggestions_PrioritizesSummarize_ForLongFormText()
+    {
+        var settingsPath = Path.Combine(Path.GetTempPath(), $"Spark-test-{Guid.NewGuid()}", "settings.json");
+        var settingsService = new SettingsService(settingsPath, new InMemorySecretStore());
+        var sut = new ActionsService(settingsService);
+
+        var longText = string.Join(" ", Enumerable.Repeat("This is a detailed sentence about project updates and decisions.", 40));
+        var actions = sut.GetSmartSuggestions(longText, "msedge");
+
+        Assert.True(actions.Count > 2);
+        Assert.Equal("summarize", actions[0].Id);
+        Assert.Equal("bullet_points", actions[1].Id);
+    }
 }
 
 internal sealed class InMemorySecretStore : ISecretStore
