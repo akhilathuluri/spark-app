@@ -147,7 +147,7 @@ public partial class ResultWindow : Window
     {
         var correlationId = _diagnosticsService?.NewCorrelationId() ?? Guid.NewGuid().ToString("N");
         _cts = new CancellationTokenSource();
-        bool firstToken = true;
+        bool firstVisibleToken = true;
         EnsureUiFlushTimer();
         _uiFlushTimer!.Start();
 
@@ -171,10 +171,24 @@ public partial class ResultWindow : Window
                 if (string.IsNullOrEmpty(t))
                     continue;
 
-                // First token flips from thinking state to result state once.
-                if (firstToken)
+                bool flushFirstVisibleChunkNow = false;
+
+                // Some providers stream leading newlines/spaces first. If we flip from
+                // thinking to result on pure whitespace, users see an empty gap before text.
+                if (firstVisibleToken)
                 {
-                    firstToken = false;
+                    var visible = t.TrimStart();
+                    if (string.IsNullOrEmpty(visible))
+                        continue;
+
+                    t = visible;
+                    firstVisibleToken = false;
+                    flushFirstVisibleChunkNow = true;
+                }
+
+                // First token flips from thinking state to result state once.
+                if (flushFirstVisibleChunkNow)
+                {
                     _ = Dispatcher.BeginInvoke(() =>
                     {
                         ThinkingPanel.Visibility = Visibility.Collapsed;
@@ -188,6 +202,14 @@ public partial class ResultWindow : Window
                 lock (_uiBufferLock)
                 {
                     _pendingUiBuffer.Append(t);
+                }
+
+                if (flushFirstVisibleChunkNow)
+                {
+                    if (Dispatcher.CheckAccess())
+                        FlushPendingUiBuffer();
+                    else
+                        _ = Dispatcher.BeginInvoke(FlushPendingUiBuffer);
                 }
             }
 
