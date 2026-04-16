@@ -41,6 +41,8 @@ Before building the installer, ensure you have:
 Ensure these files exist in your project:
 - `Spark.csproj` - Project file
 - `LICENSE.txt` - License/EULA (included in repo)
+- `EULA.txt` - End User License Agreement (included in repo)
+- `PRIVACY_POLICY.txt` - Privacy policy (included in repo)
 - `appsettings.json` - App configuration
 - `Assets/Branding/ico/App.ico` - Application icon
 - `Installer/Spark.nsi` - NSIS script (included in repo)

@@ -1,0 +1,85 @@
+SPARK - END USER LICENSE AGREEMENT (EULA)
+
+Last Updated: April 2026
+
+IMPORTANT: INSTALLATION OR USE OF SPARK MEANS YOU ACCEPT THIS EULA.
+IF YOU DO NOT AGREE, DO NOT INSTALL OR USE THE SOFTWARE.
+
+This End User License Agreement ("EULA") is entered into between you
+("End User", "you") and the Spark Licensor ("Licensor", "we", "us") for
+Spark and related components (collectively, the "Software").
+
+1. ACCEPTANCE AND SCOPE
+1.1 This EULA governs your installation and use of the Software.
+1.2 This EULA applies together with the Proprietary License and Privacy Policy.
+1.3 If you are accepting on behalf of an organization, you represent you have
+authority to bind that organization.
+
+2. ELIGIBILITY
+You must be legally capable of entering this agreement and using the Software in
+compliance with applicable law.
+
+3. LICENSE TO USE
+3.1 Subject to strict compliance with all legal terms, Licensor grants a
+limited, revocable, non-exclusive, non-transferable, non-sublicensable right to
+install and use the Software for lawful use.
+3.2 No ownership rights are transferred.
+
+4. STRICT USAGE RULES
+You agree not to:
+4.1 Reverse engineer, decompile, disassemble, or derive source or model logic.
+4.2 Redistribute, sell, sublicense, host, or expose the Software to third
+parties as a service without written permission.
+4.3 Circumvent technical controls, safeguards, update controls, or security
+features.
+4.4 Use the Software for illegal, abusive, infringing, deceptive, or harmful
+activities.
+
+5. THIRD-PARTY SERVICES AND AI PROVIDERS
+5.1 The Software may connect to third-party AI providers configured by you.
+5.2 Your use of third-party services is governed by those third-party terms.
+5.3 Licensor is not responsible for third-party service availability, policy,
+content filtering, or charges.
+
+6. DATA HANDLING ACKNOWLEDGMENT
+6.1 You acknowledge selected text and prompts may be sent to configured AI
+providers to produce outputs.
+6.2 You are responsible for ensuring you have rights and legal basis to process
+that content.
+6.3 Sensitive data should be handled according to your own policy and risk
+controls.
+
+7. UPDATES AND SUPPORT
+7.1 Licensor may provide updates, fixes, and feature changes at its discretion.
+7.2 Licensor may suspend or discontinue features at any time without liability.
+
+8. TERMINATION
+8.1 This EULA remains effective until terminated.
+8.2 Breach of this EULA or related legal terms causes immediate termination.
+8.3 On termination, you must stop using and delete all copies of the Software.
+
+9. DISCLAIMER OF WARRANTIES
+THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE, TITLE, AND NON-INFRINGEMENT.
+
+10. LIMITATION OF LIABILITY
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, LICENSOR SHALL NOT BE LIABLE FOR
+INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES,
+INCLUDING LOSS OF DATA, BUSINESS INTERRUPTION, OR LOSS OF PROFITS.
+
+11. INDEMNITY
+You agree to indemnify and hold harmless Licensor from claims, liabilities,
+damages, and costs arising from your misuse of the Software or violation of
+applicable law or agreement terms.
+
+12. GOVERNING LAW
+This EULA is governed by the laws of the jurisdiction where Licensor resides,
+without regard to conflicts-of-law rules.
+
+13. CONTACT
+Email: akhil.builds@proton.me
+Issues / Contact / Feedback: https://www.spark-app.in/issues
+
+By selecting "I Agree" during installation, you confirm that you have read,
+understood, and accepted this EULA.

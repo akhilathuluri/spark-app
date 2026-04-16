@@ -218,4 +218,4 @@ Spark/
 
 ## License
 
-MIT
+Proprietary. See `LICENSE.txt`, `EULA.txt`, and `PRIVACY_POLICY.txt`.

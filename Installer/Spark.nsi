@@ -42,6 +42,8 @@ OutFile "..\${INSTALLER_NAME}"
 ;-------- MUI Settings --------
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "..\LICENSE.txt"
+!insertmacro MUI_PAGE_LICENSE "..\EULA.txt"
+!insertmacro MUI_PAGE_LICENSE "..\PRIVACY_POLICY.txt"
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
@@ -73,6 +75,8 @@ Section "Install"
   SetOutPath "$INSTDIR"
   File "..\appsettings.json"
   File "..\LICENSE.txt"
+  File "..\EULA.txt"
+  File "..\PRIVACY_POLICY.txt"
   File "..\README.md"
   
   ; Copy localization files
@@ -143,6 +147,8 @@ Section "Uninstall"
   Delete "$INSTDIR\Spark.dll"
   Delete "$INSTDIR\appsettings.json"
   Delete "$INSTDIR\LICENSE.txt"
+  Delete "$INSTDIR\EULA.txt"
+  Delete "$INSTDIR\PRIVACY_POLICY.txt"
   Delete "$INSTDIR\README.md"
   Delete "$INSTDIR\Assets\Branding\ico\App.ico"
   Delete "$INSTDIR\Locales\en.json"
