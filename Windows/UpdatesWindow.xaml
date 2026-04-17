@@ -137,6 +137,14 @@
                         </StackPanel>
                     </Border>
 
+                    <Border Background="#1A1A28" CornerRadius="10" Padding="14,12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="DIAGNOSTICS" Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock x:Name="SelectedRuntimeText" Style="{StaticResource BodyLabelStyle}"/>
+                            <TextBlock x:Name="VerificationResultText" Style="{StaticResource BodyLabelStyle}" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Border>
+
                     <Border Background="#1A1A28" CornerRadius="10" Padding="14,12">
                         <StackPanel>
                             <TextBlock Text="RELEASE NOTES" Style="{StaticResource SectionTitleStyle}"/>

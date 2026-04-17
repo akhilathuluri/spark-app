@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Spark.Models;
+using Spark.Services.Updates;
 
 
 namespace Spark.Services;
@@ -16,6 +17,8 @@ public sealed class UpdateNotificationService : IDisposable
     private readonly HttpClient _http;
     private readonly bool _ownsHttpClient;
     private readonly string _baseUrl;
+    private readonly UpdateArchitectureService _architectureService;
+    private readonly UpdateDownloadResolver _downloadResolver;
 
     public UpdateNotificationService(HttpClient? httpClient = null, string? baseUrl = null)
     {
@@ -24,6 +27,8 @@ public sealed class UpdateNotificationService : IDisposable
         _baseUrl = string.IsNullOrWhiteSpace(baseUrl)
             ? LoadBaseUrlFromConfig()
             : baseUrl;
+        _architectureService = new UpdateArchitectureService();
+        _downloadResolver = new UpdateDownloadResolver();
     }
 
     /// <summary>
@@ -106,16 +111,36 @@ public sealed class UpdateNotificationService : IDisposable
 
             var isUpdateAvailable = CompareVersions(latest, current) > 0;
             var isRequiredUpdate = CompareVersions(minimum, current) > 0;
+            var preferredRuntimeId = _architectureService.GetPreferredRuntimeId();
+            var processArchitecture = _architectureService.GetProcessArchitectureLabel();
+            var osArchitecture = _architectureService.GetOsArchitectureLabel();
+            var resolution = _downloadResolver.Resolve(
+                preferredRuntimeId,
+                BuildRuntimeDownloads(app),
+                app.DownloadUrl,
+                app.DownloadSha256);
+
+            if (isUpdateAvailable && resolution.UsedFallback)
+            {
+                DebugLogService.LogMessage(
+                    $"UpdateNotificationService: fallback download selected. preferred={preferredRuntimeId}, selected={resolution.SelectedRuntimeId}");
+            }
 
             return new AppUpdateInfo
             {
                 AppId = app.AppId,
                 AppName = app.AppName,
+                PreferredRuntimeId = preferredRuntimeId,
+                SelectedRuntimeId = resolution.SelectedRuntimeId,
+                ProcessArchitecture = processArchitecture,
+                OsArchitecture = osArchitecture,
                 CurrentVersion = current,
                 LatestVersion = latest,
                 MinimumVersion = minimum,
                 ReleaseNotes = app.ReleaseNotes,
-                DownloadUrl = app.DownloadUrl,
+                DownloadUrl = resolution.Url,
+                DownloadSha256 = resolution.Sha256,
+                UsedDownloadFallback = resolution.UsedFallback,
                 IsUpdateAvailable = isUpdateAvailable,
                 IsRequiredUpdate = isRequiredUpdate,
                 CheckedAtUtc = DateTime.UtcNow
@@ -175,6 +200,44 @@ public sealed class UpdateNotificationService : IDisposable
         return new Version(0, 0, 0);
     }
 
+    private static IEnumerable<UpdateDownloadOption> BuildRuntimeDownloads(AppTableRow row)
+    {
+        var options = new Dictionary<string, UpdateDownloadOption>(StringComparer.OrdinalIgnoreCase);
+
+        AddOption(options, "win-x64", row.DownloadUrlWinX64, row.Sha256WinX64);
+        AddOption(options, "win-arm64", row.DownloadUrlWinArm64, row.Sha256WinArm64);
+
+        if (row.Downloads is not null)
+        {
+            foreach (var (runtimeId, item) in row.Downloads)
+            {
+                var url = item.Url;
+                if (string.IsNullOrWhiteSpace(url))
+                    continue;
+
+                AddOption(options, runtimeId, url, item.Sha256);
+            }
+        }
+
+        return options.Values;
+    }
+
+    private static void AddOption(
+        IDictionary<string, UpdateDownloadOption> options,
+        string runtimeId,
+        string? url,
+        string? sha256)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return;
+
+        var normalizedRuntimeId = UpdateDownloadResolver.NormalizeRuntimeId(runtimeId);
+        options[normalizedRuntimeId] = new UpdateDownloadOption(
+            normalizedRuntimeId,
+            url.Trim(),
+            sha256?.Trim() ?? string.Empty);
+    }
+
     private sealed class AppTableResponse
     {
         public int Count { get; set; }
@@ -200,7 +263,34 @@ public sealed class UpdateNotificationService : IDisposable
         [JsonPropertyName("download_url")]
         public string DownloadUrl { get; set; } = string.Empty;
 
+        [JsonPropertyName("download_sha256")]
+        public string DownloadSha256 { get; set; } = string.Empty;
+
+        [JsonPropertyName("download_url_win_x64")]
+        public string? DownloadUrlWinX64 { get; set; }
+
+        [JsonPropertyName("download_url_win_arm64")]
+        public string? DownloadUrlWinArm64 { get; set; }
+
+        [JsonPropertyName("sha256_win_x64")]
+        public string? Sha256WinX64 { get; set; }
+
+        [JsonPropertyName("sha256_win_arm64")]
+        public string? Sha256WinArm64 { get; set; }
+
+        [JsonPropertyName("downloads")]
+        public Dictionary<string, RuntimeDownloadRow>? Downloads { get; set; }
+
         [JsonPropertyName("release_notes")]
         public string ReleaseNotes { get; set; } = string.Empty;
+    }
+
+    private sealed class RuntimeDownloadRow
+    {
+        [JsonPropertyName("url")]
+        public string Url { get; set; } = string.Empty;
+
+        [JsonPropertyName("sha256")]
+        public string Sha256 { get; set; } = string.Empty;
     }
 }
