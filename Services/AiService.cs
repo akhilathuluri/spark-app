@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using Spark.Models;
+using Spark.Services.Prompts;
 using Polly;
 
 namespace Spark.Services;
@@ -15,6 +16,7 @@ public class AiService : IDisposable
 
     private readonly HttpClient _httpClient;
     private readonly SettingsService _settingsService;
+    private readonly UserPromptPersonalizationService _promptPersonalizationService = new();
 
     public AiService(SettingsService settingsService)
     {
@@ -45,7 +47,7 @@ public class AiService : IDisposable
     public async Task<string> ProcessAsync(string prompt, string selectedText, CancellationToken ct = default)
     {
         var settings = _settingsService.Load();
-        var fullPrompt = prompt.Replace("{text}", selectedText);
+        var fullPrompt = _promptPersonalizationService.BuildPrompt(prompt, selectedText, settings);
 
         return settings.ActiveProvider switch
         {
@@ -199,7 +201,7 @@ public class AiService : IDisposable
         [EnumeratorCancellation] CancellationToken ct = default)
     {
         var settings   = _settingsService.Load();
-        var fullPrompt = prompt.Replace("{text}", selectedText);
+        var fullPrompt = _promptPersonalizationService.BuildPrompt(prompt, selectedText, settings);
 
         var tokens = settings.ActiveProvider switch
         {

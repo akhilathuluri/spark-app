@@ -146,7 +146,11 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock x:Name="TitleIconText" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#7C6AF7" Margin="0,0,8,0"/>
+                        <TextBlock x:Name="TitleIconText"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI Symbol, Segoe UI Emoji, Segoe UI"
+                                   FontSize="16"
+                                   Foreground="#7C6AF7"
+                                   Margin="0,0,8,0"/>
                         <TextBlock Text="Usage Dashboard" FontSize="15" FontWeight="SemiBold" Foreground="#E0E0F0"/>
                     </StackPanel>
                     <Button Grid.Column="1" Content="✕" Click="CloseButton_Click"

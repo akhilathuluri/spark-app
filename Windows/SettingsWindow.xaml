@@ -327,6 +327,27 @@
                         <ComboBoxItem Content="Español" Tag="es"/>
                     </ComboBox>
 
+                    <TextBlock x:Name="WritingProfileHeaderText" Text="WRITING PROFILE" Style="{StaticResource SectionHeader}"/>
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock x:Name="WritingNameLabelText" Text="Your Name" Style="{StaticResource LabelStyle}"/>
+                            <TextBox x:Name="WritingNameBox" Style="{StaticResource InputStyle}"
+                                     ToolTip="Used for AI email/sign-off personalization"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock x:Name="WritingEmailLabelText" Text="Your Email (optional)" Style="{StaticResource LabelStyle}"/>
+                            <TextBox x:Name="WritingEmailBox" Style="{StaticResource InputStyle}"
+                                     ToolTip="Optional. Used for AI email placeholder replacement"/>
+                        </StackPanel>
+                    </Grid>
+
                     <!-- ── Hotkey ── -->
                     <TextBlock x:Name="KeyboardShortcutHeaderText" Text="KEYBOARD SHORTCUT" Style="{StaticResource SectionHeader}"/>
                     <Grid Margin="0,0,0,12">

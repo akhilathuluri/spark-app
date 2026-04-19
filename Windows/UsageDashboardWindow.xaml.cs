@@ -15,7 +15,10 @@ public partial class UsageDashboardWindow : Window
         InitializeComponent();
 
         var glyph = _iconService.GetGlyph(IconKey.UsageDashboard);
-        TitleIconText.Text = string.IsNullOrWhiteSpace(glyph) ? "#" : glyph;
+        if (string.IsNullOrWhiteSpace(glyph))
+            glyph = _iconService.GetGlyph(IconKey.MoreInfo);
+
+        TitleIconText.Text = glyph;
     }
 
     public void ShowPanel()

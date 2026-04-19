@@ -41,6 +41,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- Title row -->
@@ -51,6 +52,8 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock x:Name="ActionIcon" FontSize="16" Margin="0,0,8,0"
+                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI Symbol, Segoe UI Emoji, Segoe UI"
+                               Foreground="#C8C8E8"
                                VerticalAlignment="Center"/>
                     <TextBlock x:Name="ActionTitle" FontSize="14" FontWeight="SemiBold"
                                Foreground="#C8C8E8" VerticalAlignment="Center"/>
@@ -164,8 +167,82 @@
                 </Grid>
             </Border>
 
+            <!-- Follow-up actions -->
+            <Border Grid.Row="3" x:Name="FollowUpPanel"
+                    Background="#1A1A28" CornerRadius="10" Padding="10,8"
+                    Margin="0,0,0,12" Visibility="Collapsed">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="FOLLOW-UP ACTIONS"
+                               FontSize="11"
+                               Foreground="#7C6AF7"
+                               FontWeight="SemiBold"
+                               Margin="2,0,0,8"/>
+
+                    <ScrollViewer Grid.Row="1"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl x:Name="FollowUpItems">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Tag="{Binding Option}"
+                                            Click="FollowUpButton_Click"
+                                            FontSize="12"
+                                            Height="30"
+                                            Padding="10,0"
+                                            Margin="0,0,6,0"
+                                            BorderThickness="0"
+                                            Cursor="Hand">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd"
+                                                        Background="#222234"
+                                                        CornerRadius="8"
+                                                        Padding="{TemplateBinding Padding}">
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding IconGlyph}"
+                                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI Symbol, Segoe UI Emoji, Segoe UI"
+                                                                   FontSize="12"
+                                                                   Foreground="#B0B0D0"
+                                                                   Margin="0,0,6,0"
+                                                                   VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding Name}"
+                                                                   Foreground="#B0B0D0"
+                                                                   VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#2E2E48"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsPressed" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#383858"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                        <Button.Foreground>
+                                            <SolidColorBrush Color="#B0B0D0"/>
+                                        </Button.Foreground>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
             <!-- Action buttons -->
-            <Grid Grid.Row="3" x:Name="ButtonPanel" Visibility="Collapsed">
+            <Grid Grid.Row="4" x:Name="ButtonPanel" Visibility="Collapsed">
 
                 <!-- Left: compact icon-only utility buttons -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">

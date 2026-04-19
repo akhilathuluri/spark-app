@@ -5,6 +5,8 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Text;
 using Spark.Models;
+using Spark.Services.FollowUps;
+using Spark.Services.Prompts;
 using Spark.Services;
 
 namespace Spark.Windows;
@@ -15,8 +17,11 @@ public partial class ResultWindow : Window
     private readonly TextCaptureService _textCapture;
     private readonly SettingsService _settingsService;
     private readonly HistoryService _historyService;
+    private readonly IconService _iconService = new();
     private readonly TextSanitizationService _textSanitizationService;
     private readonly UsageMetricsService _usageMetricsService;
+    private readonly FollowUpActionService _followUpActionService = new();
+    private readonly UserPromptPersonalizationService _promptPersonalizationService = new();
     private CancellationTokenSource? _cts;
     private CancellationTokenSource? _diffCts;  // cancels in-flight diff computation on Regenerate
     private string _resultText = string.Empty;
@@ -32,6 +37,7 @@ public partial class ResultWindow : Window
     // Diff state
     private bool _isDiffAction;
     private bool _showingDiff;
+    private bool _isFollowUpProcessing;
 
     // Streaming UI buffer: avoid dispatching one TextBox update per token.
     private readonly StringBuilder _pendingUiBuffer = new();
@@ -52,7 +58,8 @@ public partial class ResultWindow : Window
     private static readonly HashSet<string> DiffEligibleActions = new()
     {
         "fix_grammar", "rewrite", "improve",
-        "change_tone", "casual_tone", "shorten", "expand"
+        "change_tone", "casual_tone", "shorten", "expand",
+        "length_50_words", "tweet_length", "one_paragraph", "bullet_summary"
     };
 
     public ResultWindow(
@@ -95,6 +102,7 @@ public partial class ResultWindow : Window
         _resultText = string.Empty;
         _rawResultBuilder.Clear();
         ClearPendingUiBuffer();
+        _isFollowUpProcessing = false;
 
         // Remember for Regenerate / Expand
         _currentAction       = action;
@@ -105,15 +113,17 @@ public partial class ResultWindow : Window
         ResultPanel.Visibility    = Visibility.Collapsed;
         ErrorPanel.Visibility     = Visibility.Collapsed;
         DiffPanel.Visibility      = Visibility.Collapsed;
+        FollowUpPanel.Visibility  = Visibility.Collapsed;
         ButtonPanel.Visibility    = Visibility.Collapsed;
         ExpandButton.Visibility   = Visibility.Collapsed;
         DiffToggleButton.Visibility = Visibility.Collapsed;
+        FollowUpItems.ItemsSource = null;
         ResultText.Text           = string.Empty;
         ErrorText.Text            = string.Empty;
 
         // Reset diff state
         _showingDiff    = false;
-        _isDiffAction   = DiffEligibleActions.Contains(action.Id);
+        _isDiffAction   = DiffEligibleActions.Contains(action.Id) || action.Id.StartsWith("followup_", StringComparison.Ordinal);
         DiffToggleButton.Content  = "Changes";
         DiffToggleButton.ToolTip  = "Show changes from original";
         DiffText.Document = new FlowDocument();
@@ -253,6 +263,8 @@ public partial class ResultWindow : Window
 
                 // Final pass sanitization ensures consistent text before history/copy/replace.
                 _resultText = _textSanitizationService.SanitizeFinal(_rawResultBuilder.ToString());
+                var settings = _settingsService.Load();
+                _resultText = _promptPersonalizationService.ApplyIdentityPlaceholders(_resultText, settings);
                 ResultText.Text = _resultText;
 
                 if (string.IsNullOrWhiteSpace(_resultText))
@@ -281,6 +293,8 @@ public partial class ResultWindow : Window
                         _ = BuildDiffAsync(_currentSelectedText, _resultText, _diffCts.Token);
                         DiffToggleButton.Visibility = Visibility.Visible;
                     }
+
+                    BindFollowUpActions();
                 }
             });
 
@@ -509,6 +523,55 @@ public partial class ResultWindow : Window
             DiffToggleButton.ToolTip        = "Show changes from original";
             AnimatePanelIn(ResultPanel);
         }
+    }
+
+    private void FollowUpButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isFollowUpProcessing)
+            return;
+
+        if (sender is not System.Windows.Controls.Button button)
+            return;
+
+        if (button.Tag is not FollowUpActionOption option)
+            return;
+
+        var sourceText = CurrentResultText;
+        if (string.IsNullOrWhiteSpace(sourceText))
+            return;
+
+        _isFollowUpProcessing = true;
+        var followUpAction = _followUpActionService.ToActionItem(option);
+        followUpAction.Icon = _iconService.GetActionGlyph(option.IconActionId, _iconService.GetGlyph(IconKey.CustomAction));
+        ShowWithProcessing(followUpAction, sourceText, _lastCursorPos);
+    }
+
+    private void BindFollowUpActions()
+    {
+        var options = _followUpActionService.GetSuggestedOptions(_currentAction, CurrentResultText);
+        if (options.Count == 0)
+        {
+            FollowUpItems.ItemsSource = null;
+            FollowUpPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        FollowUpItems.ItemsSource = options
+            .Select(option => new FollowUpOptionViewModel
+            {
+                Option = option,
+                Name = option.Name,
+                IconGlyph = _iconService.GetActionGlyph(option.IconActionId, _iconService.GetGlyph(IconKey.CustomAction))
+            })
+            .ToList();
+        FollowUpPanel.Visibility = Visibility.Visible;
+    }
+
+    private sealed class FollowUpOptionViewModel
+    {
+        public FollowUpActionOption Option { get; init; } = new();
+        public string Name { get; init; } = string.Empty;
+        public string IconGlyph { get; init; } = string.Empty;
     }
 
     private void AnimatePanelIn(UIElement panel)

@@ -304,7 +304,12 @@ public class SettingsService
             Language = settings.Language,
             SafeReplacePreviewMode = settings.SafeReplacePreviewMode,
             EnableDiagnosticsBundle = settings.EnableDiagnosticsBundle,
-            OnboardingCompleted = settings.OnboardingCompleted
+            OnboardingCompleted = settings.OnboardingCompleted,
+            UserProfile = new UserProfileSettings
+            {
+                Name = settings.UserProfile?.Name?.Trim() ?? string.Empty,
+                Email = settings.UserProfile?.Email?.Trim() ?? string.Empty
+            }
         };
     }
 
@@ -361,6 +366,10 @@ public class SettingsService
             settings.Theme = "Dark";
             recovered.Add("theme");
         }
+
+        settings.UserProfile ??= new UserProfileSettings();
+        settings.UserProfile.Name = settings.UserProfile.Name?.Trim() ?? string.Empty;
+        settings.UserProfile.Email = settings.UserProfile.Email?.Trim() ?? string.Empty;
 
         settings.SettingsVersion = Math.Max(settings.SettingsVersion, 3);
 

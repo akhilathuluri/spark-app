@@ -61,6 +61,10 @@ public partial class SettingsWindow : Window
         SafeReplacePreviewCheck.IsChecked = _settings.SafeReplacePreviewMode;
         EnableDiagnosticsBundleCheck.IsChecked = _settings.EnableDiagnosticsBundle;
 
+        // Writing profile
+        WritingNameBox.Text = _settings.UserProfile?.Name ?? string.Empty;
+        WritingEmailBox.Text = _settings.UserProfile?.Email ?? string.Empty;
+
         LanguageCombo.SelectedIndex = _settings.Language == "es" ? 1 : 0;
 
         // Version
@@ -95,6 +99,8 @@ public partial class SettingsWindow : Window
         _settings.Groq.Model = GroqModelBox.Text.Trim();
         _settings.HotkeyModifiers = HotkeyModifiers.Text.Trim();
         _settings.HotkeyKey = HotkeyKey.Text.Trim();
+        _settings.UserProfile.Name = WritingNameBox.Text.Trim();
+        _settings.UserProfile.Email = WritingEmailBox.Text.Trim();
 
         if (string.IsNullOrWhiteSpace(_settings.HotkeyModifiers) || string.IsNullOrWhiteSpace(_settings.HotkeyKey))
         {
@@ -278,6 +284,9 @@ public partial class SettingsWindow : Window
         RotateKeysButton.Content = _loc.T("settings.rotateKeys", "Rotate Keys");
         LanguageHeaderText.Text = _loc.T("settings.languageHeader", "LANGUAGE");
         LanguageLabelText.Text = _loc.T("settings.language", "Display Language");
+        WritingProfileHeaderText.Text = _loc.T("settings.writingProfile", "WRITING PROFILE");
+        WritingNameLabelText.Text = _loc.T("settings.writingName", "Your Name");
+        WritingEmailLabelText.Text = _loc.T("settings.writingEmail", "Your Email (optional)");
         KeyboardShortcutHeaderText.Text = _loc.T("settings.hotkeyHeader", "KEYBOARD SHORTCUT");
         ModifiersLabelText.Text = _loc.T("settings.modifiers", "Modifiers (e.g. Ctrl+Shift)");
         KeyLabelText.Text = _loc.T("settings.key", "Key (e.g. Space)");

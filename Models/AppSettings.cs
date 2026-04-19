@@ -18,6 +18,13 @@ public class AppSettings
     public bool SafeReplacePreviewMode { get; set; } = false;
     public bool EnableDiagnosticsBundle { get; set; } = true;
     public bool OnboardingCompleted { get; set; } = false;
+    public UserProfileSettings UserProfile { get; set; } = new();
+}
+
+public class UserProfileSettings
+{
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
 }
 
 public class OpenRouterSettings
