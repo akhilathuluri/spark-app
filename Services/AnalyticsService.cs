@@ -2,13 +2,15 @@ using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using Spark.Services.Analytics;
 
 namespace Spark.Services;
 
 /// <summary>
 /// Developer-only analytics via PostHog.
 /// Tracks action usage, streaming chunk counts, durations, and error types.
-/// No user text, no selected content, no PII is ever sent.
+/// No user text or selected content is ever sent.
+/// Device identity fields are optional and controlled by posthog.includeDeviceIdentity.
 ///
 /// To enable: open appsettings.json and set posthog.enabled = true, posthog.apiKey = your key.
 /// Analytics are silently disabled (no-op) when not enabled.
@@ -22,6 +24,8 @@ public sealed class AnalyticsService : IDisposable
     private readonly bool       _enabled;
     private readonly string     _posthogApiKey;
     private readonly string     _posthogHost;
+    private readonly bool       _includeDeviceIdentity;
+    private readonly DeviceProfile _deviceProfile;
 
     public AnalyticsService()
     {
@@ -31,10 +35,19 @@ public sealed class AnalyticsService : IDisposable
                           .GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
 
         // Load config from appsettings.json
-        (_enabled, _posthogApiKey, _posthogHost) = LoadConfig();
+        var config = LoadConfig();
+        _enabled = config.Enabled;
+        _posthogApiKey = config.ApiKey;
+        _posthogHost = config.Host;
+        _includeDeviceIdentity = config.IncludeDeviceIdentity;
+
+        var deviceProfileService = new DeviceProfileService();
+        _deviceProfile = _includeDeviceIdentity
+            ? deviceProfileService.GetCurrentProfile(config.IncludeDeviceEmail, config.DeviceEmailOverride)
+            : DeviceProfile.Empty;
     }
 
-    private static (bool enabled, string apiKey, string host) LoadConfig()
+    private static AnalyticsConfig LoadConfig()
     {
         try
         {
@@ -57,6 +70,9 @@ public sealed class AnalyticsService : IDisposable
                     var enabled = phEl.TryGetProperty("enabled", out var enabledEl) && enabledEl.GetBoolean();
                     var apiKey = phEl.TryGetProperty("apiKey", out var keyEl) ? keyEl.GetString() : "";
                     var host = phEl.TryGetProperty("host", out var hostEl) ? hostEl.GetString() : "https://eu.i.posthog.com";
+                    var includeDeviceIdentity = phEl.TryGetProperty("includeDeviceIdentity", out var includeIdentityEl) && includeIdentityEl.GetBoolean();
+                    var includeDeviceEmail = phEl.TryGetProperty("includeDeviceEmail", out var includeEmailEl) && includeEmailEl.GetBoolean();
+                    var deviceEmailOverride = phEl.TryGetProperty("deviceEmailOverride", out var emailOverrideEl) ? emailOverrideEl.GetString() : "";
                     
                     if (string.IsNullOrWhiteSpace(apiKey))
                     {
@@ -65,7 +81,15 @@ public sealed class AnalyticsService : IDisposable
                             apiKey = envKey;
                     }
                     
-                    return (enabled && !string.IsNullOrWhiteSpace(apiKey), apiKey ?? "", host ?? "https://eu.i.posthog.com");
+                    return new AnalyticsConfig
+                    {
+                        Enabled = enabled && !string.IsNullOrWhiteSpace(apiKey),
+                        ApiKey = apiKey ?? "",
+                        Host = host ?? "https://eu.i.posthog.com",
+                        IncludeDeviceIdentity = includeDeviceIdentity,
+                        IncludeDeviceEmail = includeDeviceEmail,
+                        DeviceEmailOverride = deviceEmailOverride ?? ""
+                    };
                 }
             }
         }
@@ -74,7 +98,15 @@ public sealed class AnalyticsService : IDisposable
             DebugLogService.LogError("AnalyticsService.LoadConfig", ex);
         }
 
-        return (false, "", "https://eu.i.posthog.com");
+        return new AnalyticsConfig
+        {
+            Enabled = false,
+            ApiKey = "",
+            Host = "https://eu.i.posthog.com",
+            IncludeDeviceIdentity = false,
+            IncludeDeviceEmail = false,
+            DeviceEmailOverride = ""
+        };
     }
 
     // ── Public tracking methods ──────────────────────────────────────────────
@@ -200,7 +232,7 @@ public sealed class AnalyticsService : IDisposable
                     api_key     = _posthogApiKey,
                     @event      = eventName,
                     distinct_id = _distinctId,
-                    properties,
+                    properties  = BuildPropertiesWithDeviceProfile(properties),
                     timestamp   = DateTime.UtcNow.ToString("O")
                 };
 
@@ -210,6 +242,41 @@ public sealed class AnalyticsService : IDisposable
             }
             catch { /* analytics must never surface */ }
         });
+    }
+
+    private Dictionary<string, object?> BuildPropertiesWithDeviceProfile<T>(T properties)
+    {
+        var bag = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+
+        try
+        {
+            using var doc = JsonDocument.Parse(JsonSerializer.Serialize(properties));
+            if (doc.RootElement.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var prop in doc.RootElement.EnumerateObject())
+                    bag[prop.Name] = prop.Value.Clone();
+            }
+        }
+        catch
+        {
+            // If serialization fails for any reason, continue with base device context only.
+        }
+
+        if (_includeDeviceIdentity)
+        {
+            bag["device_machine_name"] = _deviceProfile.MachineName;
+            bag["device_user_name"] = _deviceProfile.UserName;
+            bag["device_model"] = _deviceProfile.DeviceModel;
+            bag["device_display_name"] = _deviceProfile.DeviceDisplayName;
+
+            if (!string.IsNullOrWhiteSpace(_deviceProfile.Email))
+            {
+                bag["device_email"] = _deviceProfile.Email;
+                bag["device_email_source"] = _deviceProfile.EmailSource;
+            }
+        }
+
+        return bag;
     }
 
     /// <summary>
@@ -243,4 +310,14 @@ public sealed class AnalyticsService : IDisposable
     }
 
     public void Dispose() => _http.Dispose();
+
+    private sealed class AnalyticsConfig
+    {
+        public bool Enabled { get; init; }
+        public string ApiKey { get; init; } = string.Empty;
+        public string Host { get; init; } = "https://eu.i.posthog.com";
+        public bool IncludeDeviceIdentity { get; init; }
+        public bool IncludeDeviceEmail { get; init; }
+        public string DeviceEmailOverride { get; init; } = string.Empty;
+    }
 }
