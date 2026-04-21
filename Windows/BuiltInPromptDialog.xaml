@@ -1,0 +1,74 @@
+<Window x:Class="Spark.Windows.BuiltInPromptDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Edit Built-in Prompt"
+        Width="680"
+        Height="520"
+        MinWidth="560"
+        MinHeight="420"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResizeWithGrip"
+        Background="#16161E"
+        Foreground="#E0E0F0">
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="TitleText"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,6"/>
+
+        <TextBlock x:Name="HintText"
+                   Grid.Row="1"
+                   Text="Edit the built-in prompt. Use Reset to restore this action to its original prompt."
+                   Foreground="#9A9AC4"
+                   Margin="0,0,0,10"/>
+
+        <TextBox x:Name="PromptBox"
+                 Grid.Row="2"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 VerticalScrollBarVisibility="Auto"
+                 HorizontalScrollBarVisibility="Disabled"
+                 Background="#1E1E2E"
+                 Foreground="#E0E0F0"
+                 BorderBrush="#2A2A42"
+                 BorderThickness="1"
+                 Padding="10"
+                 FontSize="13"
+                 CaretBrush="#7C6AF7"/>
+
+        <Grid Grid.Row="3" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+                <Button x:Name="ResetButton"
+                    Grid.Column="1"
+                    Content="Reset"
+                    Click="Reset_Click"
+                    Padding="12,6"/>
+                <Button x:Name="CancelButton"
+                    Grid.Column="3"
+                    Content="Cancel"
+                    Click="Cancel_Click"
+                    Padding="12,6"/>
+                <Button x:Name="SaveButton"
+                    Grid.Column="5"
+                    Content="Save"
+                    Click="Save_Click"
+                    Padding="14,6"/>
+        </Grid>
+    </Grid>
+</Window>

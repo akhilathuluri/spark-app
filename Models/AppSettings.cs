@@ -12,6 +12,7 @@ public class AppSettings
     public OpenRouterSettings OpenRouter { get; set; } = new();
     public GroqSettings Groq { get; set; } = new();
     public List<CustomAction> CustomActions { get; set; } = new();
+    public List<BuiltInActionPreference> BuiltInActionPreferences { get; set; } = new();
     public bool StartWithWindows { get; set; } = false;
     public string Theme { get; set; } = "Dark";
     public string Language { get; set; } = "en";
@@ -49,6 +50,13 @@ public class CustomAction
 
     [JsonIgnore]
     public bool IsBuiltIn => false;
+}
+
+public class BuiltInActionPreference
+{
+    public string ActionId { get; set; } = string.Empty;
+    public string PromptOverride { get; set; } = string.Empty;
+    public bool IsDeleted { get; set; }
 }
 
 public class ActionItem

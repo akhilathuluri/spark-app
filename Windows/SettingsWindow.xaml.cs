@@ -5,6 +5,7 @@ using System.Windows.Media.Animation;
 using System.Runtime.InteropServices;
 using Spark.Models;
 using Spark.Services;
+using Spark.Services.Actions;
 
 namespace Spark.Windows;
 
@@ -17,10 +18,30 @@ public partial class SettingsWindow : Window
     private const int VK_RWIN = 0x5C;
 
     private readonly SettingsService _settingsService;
+    private readonly BuiltInActionCatalogService _builtInCatalog = new();
+    private readonly BuiltInActionPreferencesService _builtInPreferences = new();
+    private readonly IconService _iconService = new();
     private readonly LocalizationService _loc;
     private AppSettings _settings;
     private Action<AppSettings>? _onSaved;
     private bool _isRecordingHotkey;
+    private List<BuiltInActionState> _builtInActionStates = new();
+
+    private sealed class BuiltInActionState
+    {
+        public string ActionId { get; init; } = string.Empty;
+        public string Name { get; init; } = string.Empty;
+        public string Description { get; init; } = string.Empty;
+        public string Icon { get; init; } = string.Empty;
+        public string DefaultPrompt { get; init; } = string.Empty;
+        public string Prompt { get; set; } = string.Empty;
+        public bool CanEditPrompt { get; init; }
+        public string EditPromptButtonText { get; set; } = string.Empty;
+        public bool IsDeleted { get; set; }
+        public string StatusText { get; set; } = string.Empty;
+        public string ToggleDeleteButtonText { get; set; } = "Delete";
+        public double RowOpacity { get; set; } = 1.0;
+    }
 
     public SettingsWindow(SettingsService settingsService, Action<AppSettings>? onSaved = null)
     {
@@ -73,6 +94,7 @@ public partial class SettingsWindow : Window
 
         // Custom actions
         RefreshCustomActions();
+        RefreshBuiltInActions();
     }
 
     private void RefreshCustomActions()
@@ -117,6 +139,8 @@ public partial class SettingsWindow : Window
 
         if (LanguageCombo.SelectedItem is ComboBoxItem languageItem)
             _settings.Language = languageItem.Tag?.ToString() ?? "en";
+
+        RebuildBuiltInPreferencesFromState();
 
         StartupService.Apply(_settings.StartWithWindows);
 
@@ -169,6 +193,134 @@ public partial class SettingsWindow : Window
             _settings.CustomActions.RemoveAll(a => a.Id == action.Id);
             RefreshCustomActions();
         }
+    }
+
+    private void RefreshBuiltInActions()
+    {
+        var defaults = _builtInCatalog.GetDefaults();
+        var preferenceMap = _builtInPreferences.BuildPreferenceMap(_settings.BuiltInActionPreferences);
+
+        _builtInActionStates = defaults.Select(a =>
+        {
+            preferenceMap.TryGetValue(a.Id, out var preference);
+            var isDeleted = preference?.IsDeleted == true;
+            var effectivePrompt = string.IsNullOrWhiteSpace(preference?.PromptOverride)
+                ? (a.Prompt ?? string.Empty)
+                : preference!.PromptOverride.Trim();
+
+            var state = new BuiltInActionState
+            {
+                ActionId = a.Id,
+                Name = a.Name,
+                Description = a.Description,
+                Icon = _iconService.GetActionGlyph(a.Id, a.Icon),
+                DefaultPrompt = a.Prompt ?? string.Empty,
+                Prompt = effectivePrompt,
+                CanEditPrompt = !string.IsNullOrWhiteSpace(a.Prompt),
+                EditPromptButtonText = _loc.T("settings.builtInEditPrompt", "Edit Prompt"),
+                IsDeleted = isDeleted
+            };
+
+            UpdateBuiltInStateView(state);
+            return state;
+        }).ToList();
+
+        RebindBuiltInActionsList();
+    }
+
+    private void UpdateBuiltInStateView(BuiltInActionState state)
+    {
+        bool hasOverride = state.CanEditPrompt &&
+                           !string.IsNullOrWhiteSpace(state.Prompt) &&
+                           !string.Equals(state.Prompt.Trim(), state.DefaultPrompt, StringComparison.Ordinal);
+
+        if (state.IsDeleted)
+            state.StatusText = _loc.T("settings.builtInDeletedStatus", "Deleted from action panel");
+        else if (hasOverride)
+            state.StatusText = _loc.T("settings.builtInOverrideStatus", "Custom prompt override active");
+        else
+            state.StatusText = _loc.T("settings.builtInDefaultStatus", "Using default prompt");
+
+        state.ToggleDeleteButtonText = state.IsDeleted
+            ? _loc.T("settings.builtInRestore", "Restore")
+            : _loc.T("settings.builtInDelete", "Delete");
+        state.RowOpacity = state.IsDeleted ? 0.55 : 1.0;
+    }
+
+    private void RebindBuiltInActionsList()
+    {
+        BuiltInActionsList.ItemsSource = null;
+        BuiltInActionsList.ItemsSource = _builtInActionStates;
+    }
+
+    private void EditBuiltInPrompt_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not BuiltInActionState state)
+            return;
+
+        if (!state.CanEditPrompt)
+            return;
+
+        var dialog = new BuiltInPromptDialog(state.Name, state.Prompt, state.DefaultPrompt, _loc)
+        {
+            Owner = this
+        };
+
+        if (dialog.ShowDialog() != true)
+            return;
+
+        state.Prompt = dialog.ResultPrompt;
+        UpdateBuiltInStateView(state);
+        RebindBuiltInActionsList();
+    }
+
+    private void ToggleBuiltInDelete_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not BuiltInActionState state)
+            return;
+
+        state.IsDeleted = !state.IsDeleted;
+        UpdateBuiltInStateView(state);
+        RebindBuiltInActionsList();
+    }
+
+    private void RestoreBuiltInDefaults_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.BuiltInActionPreferences.Clear();
+        RefreshBuiltInActions();
+        StatusLabel.Text = _loc.T("settings.builtInRestoredPendingSave", "Built-in actions restored to defaults. Click Save to apply.");
+    }
+
+    private void RebuildBuiltInPreferencesFromState()
+    {
+        var preferences = new List<BuiltInActionPreference>();
+
+        foreach (var state in _builtInActionStates)
+        {
+            var promptOverride = string.Empty;
+            if (state.CanEditPrompt)
+            {
+                var currentPrompt = state.Prompt?.Trim() ?? string.Empty;
+                var defaultPrompt = state.DefaultPrompt?.Trim() ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(currentPrompt) &&
+                    !string.Equals(currentPrompt, defaultPrompt, StringComparison.Ordinal))
+                {
+                    promptOverride = currentPrompt;
+                }
+            }
+
+            if (!state.IsDeleted && string.IsNullOrWhiteSpace(promptOverride))
+                continue;
+
+            preferences.Add(new BuiltInActionPreference
+            {
+                ActionId = state.ActionId,
+                PromptOverride = promptOverride,
+                IsDeleted = state.IsDeleted
+            });
+        }
+
+        _settings.BuiltInActionPreferences = preferences;
     }
 
     private void RotateKeys_Click(object sender, RoutedEventArgs e)
@@ -296,6 +448,8 @@ public partial class SettingsWindow : Window
         EnableDiagnosticsBundleCheck.Content = _loc.T("settings.enableDiagnostics", "Enable diagnostic bundle generation");
         CustomActionsHeaderText.Text = _loc.T("settings.customActions", "CUSTOM ACTIONS");
         NewActionButton.Content = _loc.T("settings.newAction", "+ New Action");
+        BuiltInActionsHeaderText.Text = _loc.T("settings.builtInActions", "BUILT-IN ACTIONS");
+        RestoreBuiltInsButton.Content = _loc.T("settings.restoreBuiltInDefaults", "Restore Defaults");
         RecordHotkeyButton.Content = _loc.T("settings.recordShortcut", "Record Shortcut");
         ClearHotkeyButton.Content = _loc.T("settings.clearShortcut", "Clear");
         CancelButton.Content = _loc.T("common.cancel", "Cancel");

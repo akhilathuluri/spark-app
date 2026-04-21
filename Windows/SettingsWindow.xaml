@@ -430,6 +430,8 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Text="{Binding Icon}" FontSize="18"
+                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI Symbol, Segoe UI Emoji, Segoe UI"
+                                                   Foreground="#D0D0F0"
                                                    VerticalAlignment="Center" Width="30"/>
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0">
                                             <TextBlock Text="{Binding Name}" FontSize="13"
@@ -448,6 +450,63 @@
                                                 Background="Transparent" BorderThickness="0"
                                                 Foreground="#FF5050" FontSize="13"
                                                 Cursor="Hand" Padding="4,0" Width="24"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- ── Built-in Actions ── -->
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="BuiltInActionsHeaderText" Text="BUILT-IN ACTIONS" Style="{StaticResource SectionHeader}"
+                                   Margin="0,16,0,0" VerticalAlignment="Bottom"/>
+                        <Button x:Name="RestoreBuiltInsButton" Grid.Column="1" Content="Restore Defaults"
+                                Style="{StaticResource SecondaryButton}"
+                                Click="RestoreBuiltInDefaults_Click"
+                                FontSize="12" Padding="10,5"
+                                VerticalAlignment="Bottom" Margin="0,16,0,0"/>
+                    </Grid>
+
+                    <ItemsControl x:Name="BuiltInActionsList" Margin="0,0,0,12">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="#1A1A2A" CornerRadius="8"
+                                        Margin="0,0,0,6" Padding="12,10"
+                                        Opacity="{Binding RowOpacity}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Icon}" FontSize="18"
+                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI Symbol, Segoe UI Emoji, Segoe UI"
+                                                   Foreground="#D0D0F0"
+                                                   VerticalAlignment="Center" Width="30"/>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0">
+                                            <TextBlock Text="{Binding Name}" FontSize="13"
+                                                       FontWeight="SemiBold" Foreground="#D0D0F0"/>
+                                            <TextBlock Text="{Binding Description}" FontSize="11"
+                                                       Foreground="#6C6C8A" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding StatusText}" FontSize="11"
+                                                       Foreground="#8E8EB0"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="2" Content="{Binding EditPromptButtonText}"
+                                                Tag="{Binding}"
+                                                Click="EditBuiltInPrompt_Click"
+                                                IsEnabled="{Binding CanEditPrompt}"
+                                                Style="{StaticResource SecondaryButton}"
+                                                FontSize="11" Padding="8,4" Margin="4,0"/>
+                                        <Button Grid.Column="3" Content="{Binding ToggleDeleteButtonText}"
+                                                Tag="{Binding}"
+                                                Click="ToggleBuiltInDelete_Click"
+                                                Style="{StaticResource SecondaryButton}"
+                                                FontSize="11" Padding="8,4" Margin="4,0"/>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

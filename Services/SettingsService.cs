@@ -299,6 +299,18 @@ public class SettingsService
                 Instructions = a.Instructions,
                 Icon = a.Icon
             }).ToList(),
+            BuiltInActionPreferences = settings.BuiltInActionPreferences
+                .Where(p => p != null)
+                .Where(p => !string.IsNullOrWhiteSpace(p.ActionId))
+                .Select(p => new BuiltInActionPreference
+                {
+                    ActionId = p.ActionId.Trim(),
+                    PromptOverride = p.PromptOverride?.Trim() ?? string.Empty,
+                    IsDeleted = p.IsDeleted
+                })
+                .GroupBy(p => p.ActionId, StringComparer.Ordinal)
+                .Select(g => g.Last())
+                .ToList(),
             StartWithWindows = settings.StartWithWindows,
             Theme = settings.Theme,
             Language = settings.Language,
@@ -353,6 +365,24 @@ public class SettingsService
 
         if (settings.CustomActions.Count != beforeCustomCount)
             recovered.Add("custom actions");
+
+        settings.BuiltInActionPreferences ??= new List<BuiltInActionPreference>();
+        int beforeBuiltInCount = settings.BuiltInActionPreferences.Count;
+        settings.BuiltInActionPreferences = settings.BuiltInActionPreferences
+            .Where(p => p != null)
+            .Where(p => !string.IsNullOrWhiteSpace(p.ActionId))
+            .Select(p => new BuiltInActionPreference
+            {
+                ActionId = p.ActionId.Trim(),
+                PromptOverride = p.PromptOverride?.Trim() ?? string.Empty,
+                IsDeleted = p.IsDeleted
+            })
+            .GroupBy(p => p.ActionId, StringComparer.Ordinal)
+            .Select(g => g.Last())
+            .ToList();
+
+        if (settings.BuiltInActionPreferences.Count != beforeBuiltInCount)
+            recovered.Add("built-in action preferences");
 
         var language = settings.Language?.Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(language) || (language != "en" && language != "es"))
