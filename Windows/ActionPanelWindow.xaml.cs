@@ -32,6 +32,8 @@ public partial class ActionPanelWindow : Window
     private readonly TextCaptureService _textCapture;
     private readonly SettingsService _settingsService;
     private readonly ResultWindow _resultWindow;
+    private readonly InternetSearchService? _internetSearchService;
+    private InternetSearchResultWindow? _internetSearchResultWindow;
     private List<ActionItem> _allActions = new();
     private string _selectedText = string.Empty;
     private System.Windows.Point _cursorPos;
@@ -48,13 +50,17 @@ public partial class ActionPanelWindow : Window
         AiService aiService,
         TextCaptureService textCapture,
         SettingsService settingsService,
-        ResultWindow resultWindow)
+        ResultWindow resultWindow,
+        InternetSearchService? internetSearchService = null,
+        InternetSearchResultWindow? internetSearchResultWindow = null)
     {
         _actionsService = actionsService;
         _aiService = aiService;
         _textCapture = textCapture;
         _settingsService = settingsService;
         _resultWindow = resultWindow;
+        _internetSearchService = internetSearchService;
+        _internetSearchResultWindow = internetSearchResultWindow;
 
         InitializeComponent();
         SearchIconText.Text = _iconService.GetGlyph(IconKey.Search);
@@ -235,6 +241,27 @@ public partial class ActionPanelWindow : Window
                     // Lazy-init: create once, then reuse (same pattern as all other pooled windows).
                     _askWindow ??= new AskWindow(_aiService, _textCapture, _settingsService, _resultWindow);
                     _askWindow.ShowWithText(selectedText, cursorPos);
+                }));
+            });
+            return;
+        }
+
+        // "Internet Search" uses Tavily API instead of AI
+        if (action.Id == "internet_search")
+        {
+            if (_internetSearchService == null || _internetSearchResultWindow == null)
+            {
+                MessageBox.Show("Internet Search service is not available.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            var capturedText = _selectedText;
+            var capturedSearchCursor = _cursorPos;
+            AnimateClose(onComplete: () =>
+            {
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    _internetSearchResultWindow.ShowWithSearch(action, capturedText, capturedSearchCursor);
                 }));
             });
             return;

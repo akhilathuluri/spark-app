@@ -187,6 +187,7 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="{Binding Icon}" FontSize="15"
                                        FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI Symbol, Segoe UI Emoji, Segoe UI"
+                                       Foreground="#D0D0F0"
                                        VerticalAlignment="Center" HorizontalAlignment="Center"/>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4,0">
                                 <TextBlock Text="{Binding Name}" FontSize="13.5"

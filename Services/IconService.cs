@@ -29,7 +29,8 @@ public enum IconKey
     BulletPoints,
     CasualTone,
     Improve,
-    ExplainCode
+    ExplainCode,
+    InternetSearch
 }
 
 public sealed class IconService
@@ -60,7 +61,8 @@ public sealed class IconService
         [IconKey.BulletPoints] = "\uE8FD",
         [IconKey.CasualTone] = "\uE76E",
         [IconKey.Improve] = "\uE74A",
-        [IconKey.ExplainCode] = "\uE943"
+        [IconKey.ExplainCode] = "\uE943",
+        [IconKey.InternetSearch] = "\uE774"  // Globe icon
     };
 
     public string GetGlyph(IconKey key)
@@ -86,6 +88,7 @@ public sealed class IconService
             "casual_tone" => IconKey.CasualTone,
             "improve" => IconKey.Improve,
             "explain_code" => IconKey.ExplainCode,
+            "internet_search" => IconKey.InternetSearch,
             _ => (IconKey?)null
         };
 

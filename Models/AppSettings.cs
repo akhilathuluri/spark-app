@@ -11,6 +11,7 @@ public class AppSettings
     public string ActiveProvider { get; set; } = "OpenRouter";
     public OpenRouterSettings OpenRouter { get; set; } = new();
     public GroqSettings Groq { get; set; } = new();
+    public TavilySettings Tavily { get; set; } = new();
     public List<CustomAction> CustomActions { get; set; } = new();
     public List<BuiltInActionPreference> BuiltInActionPreferences { get; set; } = new();
     public bool StartWithWindows { get; set; } = false;
@@ -38,6 +39,11 @@ public class GroqSettings
 {
     public string ApiKey { get; set; } = string.Empty;
     public string Model { get; set; } = string.Empty;
+}
+
+public class TavilySettings
+{
+    public string ApiKey { get; set; } = string.Empty;
 }
 
 public class CustomAction

@@ -19,6 +19,7 @@ public class SettingsService
 
     private const string OpenRouterApiKeyName = "openrouter.apiKey";
     private const string GroqApiKeyName = "groq.apiKey";
+    private const string TavilyApiKeyName = "tavily.apiKey";
 
     private readonly ISecretStore _secretStore;
     private readonly string _settingsPath;
@@ -183,6 +184,7 @@ public class SettingsService
     {
         _secretStore.Remove(OpenRouterApiKeyName);
         _secretStore.Remove(GroqApiKeyName);
+        _secretStore.Remove(TavilyApiKeyName);
     }
 
     private bool HydrateSecrets(AppSettings settings)
@@ -243,6 +245,33 @@ public class SettingsService
             }
         }
 
+        string? tavilyFromStore = null;
+        try
+        {
+            tavilyFromStore = _secretStore.Get(TavilyApiKeyName);
+        }
+        catch (Exception ex)
+        {
+            DebugLogService.LogError("SettingsService.HydrateSecrets.TavilyGet", ex);
+        }
+
+        if (!string.IsNullOrWhiteSpace(tavilyFromStore))
+        {
+            settings.Tavily.ApiKey = tavilyFromStore;
+        }
+        else if (!string.IsNullOrWhiteSpace(settings.Tavily.ApiKey))
+        {
+            try
+            {
+                _secretStore.Set(TavilyApiKeyName, settings.Tavily.ApiKey);
+                migrated = true;
+            }
+            catch (Exception ex)
+            {
+                DebugLogService.LogError("SettingsService.HydrateSecrets.TavilySet", ex);
+            }
+        }
+
         return migrated;
     }
 
@@ -271,6 +300,18 @@ public class SettingsService
                 DebugLogService.LogError("SettingsService.PersistSecrets.Groq", ex);
             }
         }
+
+        if (!string.IsNullOrWhiteSpace(settings.Tavily.ApiKey))
+        {
+            try
+            {
+                _secretStore.Set(TavilyApiKeyName, settings.Tavily.ApiKey);
+            }
+            catch (Exception ex)
+            {
+                DebugLogService.LogError("SettingsService.PersistSecrets.Tavily", ex);
+            }
+        }
     }
 
     private static AppSettings CloneWithoutSecrets(AppSettings settings)
@@ -290,6 +331,10 @@ public class SettingsService
             {
                 ApiKey = string.Empty,
                 Model = settings.Groq.Model
+            },
+            Tavily = new TavilySettings
+            {
+                ApiKey = string.Empty
             },
             CustomActions = settings.CustomActions.Select(a => new CustomAction
             {

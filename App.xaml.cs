@@ -16,6 +16,7 @@ public partial class App : Application
     private SettingsService? _settingsService;
     private ActionsService? _actionsService;
     private AiService? _aiService;
+    private InternetSearchService? _internetSearchService;
     private HistoryService? _historyService;
     private UsageMetricsService? _usageMetricsService;
     private AnalyticsService? _analyticsService;
@@ -44,6 +45,7 @@ public partial class App : Application
     // Pre-created windows (hidden until needed)
     private ActionPanelWindow? _actionPanel;
     private ResultWindow? _resultWindow;
+    private InternetSearchResultWindow? _internetSearchResultWindow;
     private HistoryWindow? _historyWindow;
     private MoreInfoWindow? _moreInfoWindow;
     private UpdatesWindow? _updatesWindow;
@@ -82,6 +84,7 @@ public partial class App : Application
         _actionsService = new ActionsService(_settingsService);
         _ = _actionsService.GetAllActions(); // warm cache for first hotkey press
         _aiService = new AiService(_settingsService);
+        _internetSearchService = new InternetSearchService(_settingsService);
         _textCapture = new TextCaptureService();
         _historyService = new HistoryService();
         _usageMetricsService = new UsageMetricsService();
@@ -144,8 +147,9 @@ public partial class App : Application
         StartupService.Apply(settings.StartWithWindows);
 
         // Pre-create windows (hidden) — reused on every hotkey press
-        _resultWindow = new ResultWindow(_aiService, _textCapture, _settingsService, _historyService!, _usageMetricsService!, _analyticsService!, _textSanitizationService, _diagnosticsService);
-        _actionPanel  = new ActionPanelWindow(_actionsService, _aiService, _textCapture, _settingsService, _resultWindow);
+        _resultWindow = new ResultWindow(_aiService, _textCapture, _settingsService, _historyService!, _usageMetricsService!, _analyticsService!, _textSanitizationService, _diagnosticsService, _internetSearchService);
+        _internetSearchResultWindow = new InternetSearchResultWindow(_internetSearchService!, _historyService!, _usageMetricsService!, _analyticsService!, _diagnosticsService);
+        _actionPanel  = new ActionPanelWindow(_actionsService, _aiService, _textCapture, _settingsService, _resultWindow, _internetSearchService, _internetSearchResultWindow);
         _historyWindow = new HistoryWindow(_historyService!);
         _moreInfoWindow = new MoreInfoWindow(DeveloperInfo.Default);
         _updatesWindow = new UpdatesWindow();
@@ -154,6 +158,7 @@ public partial class App : Application
 
         ApplyWindowIcon(_resultWindow);
         ApplyWindowIcon(_actionPanel);
+        ApplyWindowIcon(_internetSearchResultWindow);
         ApplyWindowIcon(_historyWindow);
         ApplyWindowIcon(_moreInfoWindow);
         ApplyWindowIcon(_updatesWindow);
@@ -468,6 +473,7 @@ public partial class App : Application
 
         CloseWindow(_actionPanel);
         CloseWindow(_resultWindow);
+        CloseWindow(_internetSearchResultWindow);
         CloseWindow(_historyWindow);
         CloseWindow(_moreInfoWindow);
         CloseWindow(_updatesWindow);
@@ -479,6 +485,7 @@ public partial class App : Application
         _hotkeyService?.Dispose();
         _trayService?.Dispose();
         _aiService?.Dispose();
+        _internetSearchService?.Dispose();
         _analyticsService?.Dispose();
         _developerNotificationService?.Dispose();
         _updateService?.Dispose();

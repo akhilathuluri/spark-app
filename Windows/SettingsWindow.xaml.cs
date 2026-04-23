@@ -71,6 +71,9 @@ public partial class SettingsWindow : Window
         GroqKeyBox.Password = _settings.Groq.ApiKey;
         GroqModelBox.Text = _settings.Groq.Model;
 
+        // Tavily
+        TavilyKeyBox.Password = _settings.Tavily.ApiKey;
+
         // Hotkey
         HotkeyModifiers.Text = _settings.HotkeyModifiers;
         HotkeyKey.Text = _settings.HotkeyKey;
@@ -119,6 +122,7 @@ public partial class SettingsWindow : Window
         _settings.OpenRouter.Model = OpenRouterModelBox.Text.Trim();
         _settings.Groq.ApiKey = GroqKeyBox.Password.Trim();
         _settings.Groq.Model = GroqModelBox.Text.Trim();
+        _settings.Tavily.ApiKey = TavilyKeyBox.Password.Trim();
         _settings.HotkeyModifiers = HotkeyModifiers.Text.Trim();
         _settings.HotkeyKey = HotkeyKey.Text.Trim();
         _settings.UserProfile.Name = WritingNameBox.Text.Trim();
@@ -329,8 +333,10 @@ public partial class SettingsWindow : Window
 
         OpenRouterKeyBox.Password = string.Empty;
         GroqKeyBox.Password = string.Empty;
+        TavilyKeyBox.Password = string.Empty;
         _settings.OpenRouter.ApiKey = string.Empty;
         _settings.Groq.ApiKey = string.Empty;
+        _settings.Tavily.ApiKey = string.Empty;
 
         StatusLabel.Text = _loc.T("settings.keysCleared", "✓ Stored API keys cleared. Add new keys and click Save.");
     }

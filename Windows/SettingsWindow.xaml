@@ -306,6 +306,13 @@
                                  ToolTip="Groq model name"/>
                     </StackPanel>
 
+                    <!-- ── Internet Search ── -->
+                    <TextBlock x:Name="InternetSearchHeaderText" Text="INTERNET SEARCH" Style="{StaticResource SectionHeader}"/>
+                    <TextBlock x:Name="TavilyApiKeyLabelText" Text="Tavily API Key" Style="{StaticResource LabelStyle}"/>
+                    <PasswordBox x:Name="TavilyKeyBox" Style="{StaticResource PasswordStyle}"
+                             Margin="0,0,0,12"
+                             ToolTip="Your Tavily API key from tavily.com"/>
+
                     <Border Background="#1A1A28" CornerRadius="8" Padding="12,10" Margin="0,0,0,12">
                         <Grid>
                             <Grid.ColumnDefinitions>

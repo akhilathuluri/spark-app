@@ -22,6 +22,7 @@ public partial class ResultWindow : Window
     private readonly UsageMetricsService _usageMetricsService;
     private readonly FollowUpActionService _followUpActionService = new();
     private readonly UserPromptPersonalizationService _promptPersonalizationService = new();
+    private readonly InternetSearchService? _internetSearchService;
     private CancellationTokenSource? _cts;
     private CancellationTokenSource? _diffCts;  // cancels in-flight diff computation on Regenerate
     private string _resultText = string.Empty;
@@ -70,7 +71,8 @@ public partial class ResultWindow : Window
         UsageMetricsService usageMetricsService,
         AnalyticsService analyticsService,
         TextSanitizationService textSanitizationService,
-        DiagnosticsService? diagnosticsService = null)
+        DiagnosticsService? diagnosticsService = null,
+        InternetSearchService? internetSearchService = null)
     {
         _aiService = aiService;
         _textCapture = textCapture;
@@ -80,6 +82,7 @@ public partial class ResultWindow : Window
         _analyticsService = analyticsService;
         _diagnosticsService = diagnosticsService;
         _textSanitizationService = textSanitizationService;
+        _internetSearchService = internetSearchService;
 
         InitializeComponent();
     }
