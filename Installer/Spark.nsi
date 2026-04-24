@@ -16,7 +16,9 @@ InstallDirRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Spark
 RequestExecutionLevel admin
 
 ; Version & Appearance
-!define VERSION "1.0.0"
+!ifndef VERSION
+  !define VERSION "1.0.1"
+!endif
 !define MUI_ABORTWARNING
 !define MUI_ICON "..\Assets\Branding\ico\App.ico"
 !define MUI_UNICON "..\Assets\Branding\ico\App.ico"

@@ -44,6 +44,23 @@ public class TextCaptureService
     [DllImport("user32.dll")]
     private static extern uint GetClipboardSequenceNumber();
 
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, uint dwProcessId);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool CloseHandle(IntPtr hObject);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern bool OpenProcessToken(IntPtr processHandle, uint desiredAccess, out IntPtr tokenHandle);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern bool GetTokenInformation(
+        IntPtr tokenHandle,
+        TOKEN_INFORMATION_CLASS tokenInformationClass,
+        out TOKEN_ELEVATION tokenInformation,
+        int tokenInformationLength,
+        out int returnLength);
+
     // Structures
     [StructLayout(LayoutKind.Sequential)]
     private struct POINT { public int X; public int Y; }
@@ -100,6 +117,8 @@ public class TextCaptureService
     private const ushort VK_INSERT = 0x2D;
     private const ushort VK_V = 0x56;
     private const uint WM_COPY = 0x0301;
+    private const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+    private const uint TOKEN_QUERY = 0x0008;
 
     private static readonly CaptureTuning Tuning = CaptureTuning.Load();
 
@@ -126,6 +145,17 @@ public class TextCaptureService
                 return fallback;
             return Math.Clamp(parsed, min, max);
         }
+    }
+
+    private enum TOKEN_INFORMATION_CLASS
+    {
+        TokenElevation = 20
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct TOKEN_ELEVATION
+    {
+        public int TokenIsElevated;
     }
 
     private static INPUT KeyDown(ushort vk) => new INPUT
@@ -254,6 +284,7 @@ public class TextCaptureService
 
         var appProfile = GetAppProfile(sourceWindow);
         GetWindowThreadProcessId(sourceWindow, out var sourcePid);
+        var targetAssessment = AssessCaptureTarget(sourceWindow, sourcePid, appProfile);
         LastSelectionContext = new TextSelectionContext
         {
             WindowHandle = sourceWindow,
@@ -266,12 +297,21 @@ public class TextCaptureService
         {
             AppType = appProfile.AppType,
             ProcessName = appProfile.ProcessName,
+            TargetRisk = targetAssessment.Risk,
             LastStrategy = "None",
             Attempts = 0,
             Success = false,
             UsedUiAutomationFallback = false,
-            LastFailureReason = "Capture not attempted"
+            LastFailureReason = "Capture not attempted",
+            UserHint = targetAssessment.UserHint
         };
+
+        if (!targetAssessment.ShouldAttemptCapture)
+        {
+            LastDiagnostics.LastFailureReason = targetAssessment.Reason;
+            LogCapture($"Capture skipped: {targetAssessment.Reason}");
+            return null;
+        }
 
         string? previousClipboard = null;
         System.Windows.IDataObject? previousDataObject = null;
@@ -318,7 +358,7 @@ public class TextCaptureService
             strategies[attempt].Execute();
 
             int remainingMs = (int)Math.Max(0, (overallDeadline - DateTime.UtcNow).TotalMilliseconds);
-            int attemptBudget = Tuning.BaseClipboardWaitMs + attempt * Tuning.RetryClipboardWaitIncrementMs;
+            int attemptBudget = GetAttemptBudgetMs(appProfile.AppType, attempt);
             int timeoutMs = Math.Min(attemptBudget, remainingMs);
             if (timeoutMs <= 0)
             {
@@ -344,7 +384,7 @@ public class TextCaptureService
         if (string.IsNullOrWhiteSpace(selected))
         {
             LastDiagnostics.UsedUiAutomationFallback = true;
-            selected = TryGetSelectedTextViaUiAutomation();
+            selected = TryGetSelectedTextViaUiAutomation(allowWholeValueFallback: appProfile.AppType is not "Browser" and not "Chat");
             if (string.IsNullOrWhiteSpace(selected))
             {
                 selected = null;
@@ -379,18 +419,25 @@ public class TextCaptureService
     public string GetFailureDiagnosticSummary()
     {
         var d = LastDiagnostics;
-        return $"App: {d.ProcessName} ({d.AppType}), strategy: {d.LastStrategy}, attempts: {d.Attempts}, UIA fallback: {(d.UsedUiAutomationFallback ? "used" : "not used")}, reason: {d.LastFailureReason}";
+        var hint = string.IsNullOrWhiteSpace(d.UserHint) ? string.Empty : $", hint: {d.UserHint}";
+        return $"App: {d.ProcessName} ({d.AppType}), risk: {d.TargetRisk}, strategy: {d.LastStrategy}, attempts: {d.Attempts}, UIA fallback: {(d.UsedUiAutomationFallback ? "used" : "not used")}, reason: {d.LastFailureReason}{hint}";
     }
 
     private static List<CaptureStrategy> BuildStrategies(IntPtr sourceWindow, string appType)
     {
         var strategies = new List<CaptureStrategy>();
 
-        // Terminal apps often honor Ctrl+Insert more consistently than Ctrl+C.
-        if (appType == "Terminal")
+        // Terminal and remote-desktop hosts often reserve Ctrl+C for their own semantics.
+        if (appType is "Terminal" or "RemoteDesktop")
         {
             strategies.Add(new CaptureStrategy("Ctrl+Insert", () => SendCtrlKey(VK_INSERT)));
             strategies.Add(new CaptureStrategy("Ctrl+C", () => SendCtrlKey(VK_C)));
+        }
+        else if (appType is "Browser" or "Chat")
+        {
+            strategies.Add(new CaptureStrategy("Ctrl+C", () => SendCtrlKey(VK_C)));
+            strategies.Add(new CaptureStrategy("Ctrl+C (delayed retry)", () => SendCtrlKey(VK_C)));
+            strategies.Add(new CaptureStrategy("Ctrl+Insert", () => SendCtrlKey(VK_INSERT)));
         }
         else
         {
@@ -412,6 +459,27 @@ public class TextCaptureService
         return strategies;
     }
 
+    public static IReadOnlyList<string> GetCaptureStrategyPlanForDiagnostics(string appType)
+    {
+        return BuildStrategies(IntPtr.Zero, appType)
+            .Select(strategy => strategy.Name)
+            .ToList();
+    }
+
+    private static int GetAttemptBudgetMs(string appType, int attempt)
+    {
+        var baseWait = Tuning.BaseClipboardWaitMs;
+
+        if (appType is "Browser" or "Chat")
+            baseWait += 160;
+        else if (appType is "RemoteDesktop")
+            baseWait += 260;
+        else if (appType is "Terminal")
+            baseWait += 80;
+
+        return baseWait + attempt * Tuning.RetryClipboardWaitIncrementMs;
+    }
+
     private static AppProfile GetAppProfile(IntPtr hwnd)
     {
         try
@@ -427,6 +495,12 @@ public class TextCaptureService
             var name = process.ProcessName;
             var lower = name.ToLowerInvariant();
 
+            if (lower.Contains("credential") || lower.Contains("logonui") || lower.Contains("lockapp") || lower.Contains("lsass"))
+                return new AppProfile("Protected", name);
+
+            if (lower.Contains("mstsc") || lower.Contains("msrdc") || lower.Contains("vmconnect") || lower.Contains("teamviewer") || lower.Contains("anydesk"))
+                return new AppProfile("RemoteDesktop", name);
+
             if (lower.Contains("windowsterminal") || lower.Contains("powershell") || lower == "cmd" || lower == "wt")
                 return new AppProfile("Terminal", name);
 
@@ -436,7 +510,7 @@ public class TextCaptureService
             if (lower.Contains("chrome") || lower.Contains("msedge") || lower.Contains("firefox") || lower.Contains("brave"))
                 return new AppProfile("Browser", name);
 
-            if (lower.Contains("teams") || lower.Contains("slack") || lower.Contains("discord") || lower.Contains("telegram"))
+            if (lower.Contains("teams") || lower.Contains("slack") || lower.Contains("discord") || lower.Contains("telegram") || lower.Contains("whatsapp"))
                 return new AppProfile("Chat", name);
 
             return new AppProfile("Other", name);
@@ -447,7 +521,131 @@ public class TextCaptureService
         }
     }
 
-    private static string? TryGetSelectedTextViaUiAutomation()
+    private static CaptureTargetAssessment AssessCaptureTarget(IntPtr hwnd, uint processId, AppProfile appProfile)
+    {
+        if (hwnd == IntPtr.Zero)
+        {
+            return CaptureTargetAssessment.Blocked(
+                "Unknown",
+                "No foreground window was available.",
+                "Click into the app and select text before pressing the hotkey.");
+        }
+
+        if (appProfile.AppType == "Protected")
+        {
+            return CaptureTargetAssessment.Blocked(
+                "Protected",
+                "The foreground window is a protected Windows security surface.",
+                "Spark cannot capture from protected system or credential windows.");
+        }
+
+        if (TryFocusedElementIsSensitive(out var sensitiveReason))
+        {
+            return CaptureTargetAssessment.Blocked(
+                "SensitiveField",
+                sensitiveReason,
+                "Spark does not capture from password or protected input fields.");
+        }
+
+        if (processId != 0 && IsProcessElevated(processId) && !IsCurrentProcessElevated())
+        {
+            return CaptureTargetAssessment.Blocked(
+                "ElevatedTarget",
+                "The target app is running as administrator while Spark is not.",
+                "Run Spark as administrator too, or use Spark with non-admin apps.");
+        }
+
+        if (appProfile.AppType == "RemoteDesktop")
+        {
+            return CaptureTargetAssessment.Allowed(
+                "RemoteDesktop",
+                "Remote desktop and virtual machine windows may swallow copy hotkeys; Ctrl+Insert is tried first.");
+        }
+
+        return CaptureTargetAssessment.Allowed("Normal", string.Empty);
+    }
+
+    private static bool TryFocusedElementIsSensitive(out string reason)
+    {
+        reason = string.Empty;
+
+        try
+        {
+            var focused = AutomationElement.FocusedElement;
+            if (focused == null)
+                return false;
+
+            var isPassword = focused.Current.IsPassword;
+            if (isPassword)
+            {
+                reason = "The focused control reports itself as a password field.";
+                return true;
+            }
+
+            var automationId = focused.Current.AutomationId ?? string.Empty;
+            var name = focused.Current.Name ?? string.Empty;
+            var className = focused.Current.ClassName ?? string.Empty;
+            var combined = $"{automationId} {name} {className}".ToLowerInvariant();
+
+            if (combined.Contains("password") || combined.Contains("passcode") || combined.Contains("pin"))
+            {
+                reason = "The focused control appears to be a credential field.";
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            LogCapture($"Sensitive-field check failed: {ex.Message}");
+        }
+
+        return false;
+    }
+
+    private static bool IsCurrentProcessElevated()
+    {
+        using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+        var principal = new System.Security.Principal.WindowsPrincipal(identity);
+        return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+    }
+
+    private static bool IsProcessElevated(uint processId)
+    {
+        var processHandle = IntPtr.Zero;
+        var tokenHandle = IntPtr.Zero;
+
+        try
+        {
+            processHandle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, processId);
+            if (processHandle == IntPtr.Zero)
+                return false;
+
+            if (!OpenProcessToken(processHandle, TOKEN_QUERY, out tokenHandle))
+                return false;
+
+            var elevation = new TOKEN_ELEVATION();
+            return GetTokenInformation(
+                    tokenHandle,
+                    TOKEN_INFORMATION_CLASS.TokenElevation,
+                    out elevation,
+                    Marshal.SizeOf<TOKEN_ELEVATION>(),
+                    out _)
+                && elevation.TokenIsElevated != 0;
+        }
+        catch
+        {
+            return false;
+        }
+        finally
+        {
+            if (tokenHandle != IntPtr.Zero)
+                CloseHandle(tokenHandle);
+
+            if (processHandle != IntPtr.Zero)
+                CloseHandle(processHandle);
+        }
+    }
+
+    private static string? TryGetSelectedTextViaUiAutomation(bool allowWholeValueFallback)
     {
         try
         {
@@ -473,7 +671,8 @@ public class TextCaptureService
                 }
             }
 
-            if (focused.TryGetCurrentPattern(ValuePattern.Pattern, out var valuePatternObj) &&
+            if (allowWholeValueFallback &&
+                focused.TryGetCurrentPattern(ValuePattern.Pattern, out var valuePatternObj) &&
                 valuePatternObj is ValuePattern valuePattern)
             {
                 var value = valuePattern.Current.Value;
@@ -605,4 +804,16 @@ public class TextCaptureService
 
     private readonly record struct CaptureStrategy(string Name, Action Execute);
     private readonly record struct AppProfile(string AppType, string ProcessName);
+    private readonly record struct CaptureTargetAssessment(
+        bool ShouldAttemptCapture,
+        string Risk,
+        string Reason,
+        string UserHint)
+    {
+        public static CaptureTargetAssessment Allowed(string risk, string hint) =>
+            new(true, risk, string.Empty, hint);
+
+        public static CaptureTargetAssessment Blocked(string risk, string reason, string hint) =>
+            new(false, risk, reason, hint);
+    }
 }

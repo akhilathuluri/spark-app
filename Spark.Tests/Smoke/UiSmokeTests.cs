@@ -16,6 +16,7 @@ namespace Spark.Tests.Smoke;
 public class UiSmokeTests : IDisposable
 {
     private readonly Application? _app;
+    private readonly List<Application> _scratchApps = new();
     private readonly UIA3Automation _automation;
 
     public UiSmokeTests()
@@ -56,8 +57,9 @@ public class UiSmokeTests : IDisposable
     [Fact]
     public void PanelOpenSelectReplace_SmokeScenario()
     {
-        SetClipboardText("Fix my internal grammar please!");
-        Thread.Sleep(500); // Wait out any lingering system clipboard locks
+        var sourceWindow = OpenScratchEditorWithSelectedText("Fix my internal grammar please!");
+        sourceWindow.Focus();
+        Thread.Sleep(500);
 
         // 3. Simulate Global Hotkey: Ctrl + Shift + Space
         using (Keyboard.Pressing(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT))
@@ -114,8 +116,9 @@ public class UiSmokeTests : IDisposable
     [Fact]
     public void RapidHotkeyPress_IsThrottledSafely()
     {
-        SetClipboardText("Testing throttle");
-        Thread.Sleep(200);
+        var sourceWindow = OpenScratchEditorWithSelectedText("Testing throttle");
+        sourceWindow.Focus();
+        Thread.Sleep(500);
 
         // Spam the hotkey 3 times in 100ms
         for (int i = 0; i < 3; i++)
@@ -140,12 +143,27 @@ public class UiSmokeTests : IDisposable
         Assert.Single(panels);
     }
 
-    private void SetClipboardText(string text)
+    private Window OpenScratchEditorWithSelectedText(string text)
     {
-        var thread = new Thread(() => System.Windows.Clipboard.SetText(text));
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
+        var app = Application.Launch("notepad.exe");
+        _scratchApps.Add(app);
+
+        var window = Retry.WhileNull(
+            () => app.GetMainWindow(_automation),
+            TimeSpan.FromSeconds(5)).Result;
+
+        Assert.NotNull(window);
+        window.Focus();
+        Thread.Sleep(500);
+
+        Keyboard.Type(text);
+        using (Keyboard.Pressing(VirtualKeyShort.CONTROL))
+        {
+            Keyboard.Press(VirtualKeyShort.KEY_A);
+        }
+
+        Thread.Sleep(200);
+        return window;
     }
 
     private void ClearClipboard()
@@ -167,6 +185,18 @@ public class UiSmokeTests : IDisposable
                 try { _app.Kill(); } catch { }
             }
             _app.Dispose();
+        }
+
+        foreach (var scratchApp in _scratchApps)
+        {
+            try
+            {
+                if (!scratchApp.HasExited)
+                    scratchApp.Kill();
+            }
+            catch { }
+
+            scratchApp.Dispose();
         }
     }
 }

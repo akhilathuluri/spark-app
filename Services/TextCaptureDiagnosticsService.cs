@@ -19,6 +19,7 @@ public class TextCaptureDiagnosticsService
         DateTime UtcTime,
         string AppName,
         string ProcessName,
+        string TargetRisk,
         string LastStrategy,
         string Reason);
 
@@ -100,6 +101,7 @@ public class TextCaptureDiagnosticsService
                 UtcTime: DateTime.UtcNow,
                 AppName: diagnostics.ProcessName ?? "Unknown",
                 ProcessName: context?.ProcessName ?? "Unknown",
+                TargetRisk: diagnostics.TargetRisk ?? "Unknown",
                 LastStrategy: diagnostics.LastStrategy ?? "None",
                 Reason: failureReason);
 
@@ -138,10 +140,18 @@ public class TextCaptureDiagnosticsService
 
             var byApp = failuresLast5Min.GroupBy(f => f.ProcessName).ToList();
             var distinctStrategies = failuresLast5Min.Select(f => f.LastStrategy).Distinct().ToList();
+            var risks = failuresLast5Min
+                .GroupBy(f => f.TargetRisk)
+                .OrderByDescending(g => g.Count())
+                .Select(g => $"{g.Key} ({g.Count()})")
+                .ToList();
 
             var summary = $"Failures (last 5 min): {failuresLast5Min.Count} attempts, " +
                          $"{byApp.Count} distinct app(s), " +
                          $"{distinctStrategies.Count} strategies attempted";
+
+            if (risks.Count > 0)
+                summary += $", risks: {string.Join(", ", risks)}";
 
             var commonReasons = failuresLast5Min
                 .GroupBy(f => f.Reason)
@@ -198,12 +208,12 @@ public class TextCaptureDiagnosticsService
         {
             var lines = new List<string>
             {
-                "UtcTime,AppName,ProcessName,LastStrategy,Reason"
+                "UtcTime,AppName,ProcessName,TargetRisk,LastStrategy,Reason"
             };
 
             foreach (var fail in _failureHistory)
             {
-                var line = $"\"{fail.UtcTime:O}\",\"{fail.AppName}\",\"{fail.ProcessName}\",\"{fail.LastStrategy}\",\"{fail.Reason}\"";
+                var line = $"\"{fail.UtcTime:O}\",\"{fail.AppName}\",\"{fail.ProcessName}\",\"{fail.TargetRisk}\",\"{fail.LastStrategy}\",\"{fail.Reason}\"";
                 lines.Add(line);
             }
 

@@ -17,11 +17,15 @@ if /I "%2"=="win-arm64" set RUNTIME_ID=win-arm64
 if /I "%2"=="x64" set RUNTIME_ID=win-x64
 if /I "%2"=="win-x64" set RUNTIME_ID=win-x64
 set INSTALLER_NAME=SparkInstaller-%RUNTIME_ID%.exe
+set APP_VERSION=1.0.1
+for /f "tokens=2 delims=<>" %%v in ('findstr /R /C:"<Version>.*</Version>" Spark.csproj') do set APP_VERSION=%%v
 
 echo.
 echo ================================
 echo Spark Installer Build Script
 echo ================================
+echo.
+echo Version: %APP_VERSION%
 echo.
 
 REM Step 1: Publish self-contained application
@@ -67,7 +71,7 @@ if not exist "Installer\Spark.nsi" (
     exit /b 1
 )
 
-"%NSIS_PATH%" /V2 "/DBUILD_CONFIG=%BUILD_CONFIG%" "/DRUNTIME_ID=%RUNTIME_ID%" "/DPUBLISH_DIR=..\bin\%BUILD_CONFIG%\net10.0-windows\%RUNTIME_ID%\publish" "/DINSTALLER_NAME=%INSTALLER_NAME%" "Installer\Spark.nsi"
+"%NSIS_PATH%" /V2 "/DVERSION=%APP_VERSION%" "/DBUILD_CONFIG=%BUILD_CONFIG%" "/DRUNTIME_ID=%RUNTIME_ID%" "/DPUBLISH_DIR=..\bin\%BUILD_CONFIG%\net10.0-windows\%RUNTIME_ID%\publish" "/DINSTALLER_NAME=%INSTALLER_NAME%" "Installer\Spark.nsi"
 if errorlevel 1 (
     echo ERROR: NSIS compilation failed
     exit /b 1

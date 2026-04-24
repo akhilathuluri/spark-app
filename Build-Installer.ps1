@@ -49,11 +49,17 @@ Setup Instructions:
 # Determine build configuration
 $config = if ($Release) { "Release" } else { $BuildConfig }
 $installerName = "SparkInstaller-$Runtime.exe"
+[xml]$projectXml = Get-Content .\Spark.csproj
+$appVersion = $projectXml.Project.PropertyGroup.Version | Select-Object -First 1
+if ([string]::IsNullOrWhiteSpace($appVersion)) {
+  $appVersion = "1.0.1"
+}
 
 Write-Host "================================" -ForegroundColor Cyan
 Write-Host "Spark Installer Build Script" -ForegroundColor Cyan
 Write-Host "================================" -ForegroundColor Cyan
 Write-Host ""
+Write-Host "Version: $appVersion" -ForegroundColor Cyan
 
 # Step 1: Publish self-contained application
 Write-Host "[1/4] Publishing Spark application ($config, $Runtime, self-contained)..." -ForegroundColor Yellow
@@ -112,7 +118,7 @@ if (-not (Test-Path $nsiScript)) {
     exit 1
 }
 
-& $nsisPath /V2 "/DBUILD_CONFIG=$config" "/DRUNTIME_ID=$Runtime" "/DPUBLISH_DIR=..\\bin\\$config\\net10.0-windows\\$Runtime\\publish" "/DINSTALLER_NAME=$installerName" $nsiScript
+& $nsisPath /V2 "/DVERSION=$appVersion" "/DBUILD_CONFIG=$config" "/DRUNTIME_ID=$Runtime" "/DPUBLISH_DIR=..\\bin\\$config\\net10.0-windows\\$Runtime\\publish" "/DINSTALLER_NAME=$installerName" $nsiScript
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: NSIS compilation failed" -ForegroundColor Red
     exit 1
