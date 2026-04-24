@@ -10,12 +10,15 @@ public sealed class ActionRecommendationEngine
     {
         _rules = new IActionRecommendationRule[]
         {
+            new SearchIntentRule(),
+            new TranslationIntentRule(),
             new CodeContextRule(),
             new EmailContextRule(),
+            new QuestionIntentRule(),
+            new PromptIntentRule(),
             new LongFormRule(),
             new BrowserResearchRule(),
             new ChatContextRule(),
-            new PromptIntentRule(),
             new ShortSnippetRule(),
             new ListFormattingRule(),
             new DefaultFallbackRule()
@@ -65,11 +68,36 @@ public sealed class ActionRecommendationEngine
 
         public bool Applies(ActionRecommendationContext context) =>
             context.IsCodeLike ||
-            context.AppCategory == SourceAppCategory.CodeEditor ||
             context.AppCategory == SourceAppCategory.Terminal;
 
         public IReadOnlyList<string> GetActionIds(ActionRecommendationContext context) =>
             new[] { "explain_code", "rewrite", "fix_grammar", "improve", "ask_ai" };
+    }
+
+    private sealed class SearchIntentRule : IActionRecommendationRule
+    {
+        public int Weight => 15;
+
+        public bool Applies(ActionRecommendationContext context) =>
+            !context.IsLikelyNonEnglish &&
+            context.AppCategory != SourceAppCategory.Office &&
+            context.AppCategory != SourceAppCategory.Chat &&
+            (context.LooksLikeSearchQuery ||
+             (context.HasUrl && context.AppCategory == SourceAppCategory.Browser));
+
+        public IReadOnlyList<string> GetActionIds(ActionRecommendationContext context) =>
+            new[] { "internet_search", "ask_ai", "explain", "summarize" };
+    }
+
+    private sealed class TranslationIntentRule : IActionRecommendationRule
+    {
+        public int Weight => 14;
+
+        public bool Applies(ActionRecommendationContext context) =>
+            context.IsLikelyNonEnglish;
+
+        public IReadOnlyList<string> GetActionIds(ActionRecommendationContext context) =>
+            new[] { "translate", "explain", "summarize", "ask_ai" };
     }
 
     private sealed class EmailContextRule : IActionRecommendationRule
@@ -81,7 +109,31 @@ public sealed class ActionRecommendationEngine
             (context.AppCategory == SourceAppCategory.Office && context.WordCount >= 6);
 
         public IReadOnlyList<string> GetActionIds(ActionRecommendationContext context) =>
-            new[] { "change_tone", "fix_grammar", "shorten", "improve", "translate" };
+            context.IsEmailLike
+                ? new[] { "fix_grammar", "change_tone", "shorten", "improve", "casual_tone" }
+                : new[] { "change_tone", "fix_grammar", "shorten", "improve", "casual_tone" };
+    }
+
+    private sealed class QuestionIntentRule : IActionRecommendationRule
+    {
+        public int Weight => 9;
+
+        public bool Applies(ActionRecommendationContext context) =>
+            context.IsQuestionLike && !context.LooksLikeSearchQuery;
+
+        public IReadOnlyList<string> GetActionIds(ActionRecommendationContext context) =>
+            new[] { "ask_ai", "explain", "rewrite", "internet_search" };
+    }
+
+    private sealed class PromptIntentRule : IActionRecommendationRule
+    {
+        public int Weight => 9;
+
+        public bool Applies(ActionRecommendationContext context) =>
+            context.LooksLikePrompt || context.ContainsPromptIntent;
+
+        public IReadOnlyList<string> GetActionIds(ActionRecommendationContext context) =>
+            new[] { "enhance_prompt", "rewrite", "improve", "ask_ai" };
     }
 
     private sealed class LongFormRule : IActionRecommendationRule
@@ -105,7 +157,9 @@ public sealed class ActionRecommendationEngine
             (context.HasUrl || context.WordCount >= 80 || context.IsQuestionLike);
 
         public IReadOnlyList<string> GetActionIds(ActionRecommendationContext context) =>
-            new[] { "summarize", "bullet_points", "ask_ai", "translate", "explain" };
+            context.WordCount >= 80
+                ? new[] { "summarize", "bullet_points", "explain", "ask_ai", "internet_search" }
+                : new[] { "internet_search", "summarize", "ask_ai", "explain" };
     }
 
     private sealed class ChatContextRule : IActionRecommendationRule
@@ -119,17 +173,6 @@ public sealed class ActionRecommendationEngine
             new[] { "rewrite", "casual_tone", "shorten", "fix_grammar", "translate" };
     }
 
-    private sealed class PromptIntentRule : IActionRecommendationRule
-    {
-        public int Weight => 6;
-
-        public bool Applies(ActionRecommendationContext context) =>
-            context.IsQuestionLike || context.ContainsPromptIntent;
-
-        public IReadOnlyList<string> GetActionIds(ActionRecommendationContext context) =>
-            new[] { "ask_ai", "enhance_prompt", "rewrite", "improve", "explain" };
-    }
-
     private sealed class ShortSnippetRule : IActionRecommendationRule
     {
         public int Weight => 5;
@@ -137,12 +180,17 @@ public sealed class ActionRecommendationEngine
         public bool Applies(ActionRecommendationContext context) =>
             !context.IsCodeLike &&
             !context.IsEmailLike &&
+            !context.IsQuestionLike &&
+            !context.LooksLikePrompt &&
+            !context.IsLikelyNonEnglish &&
             context.AppCategory != SourceAppCategory.Office &&
             context.WordCount > 0 &&
             context.WordCount <= 35;
 
         public IReadOnlyList<string> GetActionIds(ActionRecommendationContext context) =>
-            new[] { "fix_grammar", "rewrite", "improve", "expand" };
+            context.IsVeryShort
+                ? new[] { "expand", "rewrite", "fix_grammar", "improve" }
+                : new[] { "fix_grammar", "rewrite", "improve", "expand" };
     }
 
     private sealed class ListFormattingRule : IActionRecommendationRule

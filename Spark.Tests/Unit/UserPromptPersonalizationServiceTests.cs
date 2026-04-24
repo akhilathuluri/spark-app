@@ -7,7 +7,7 @@ namespace Spark.Tests.Unit;
 public class UserPromptPersonalizationServiceTests
 {
     [Fact]
-    public void BuildPrompt_IncludesProfileSection_WhenNameConfigured()
+    public void BuildPrompt_IncludesProfileSection_ForEmailIntent()
     {
         var service = new UserPromptPersonalizationService();
         var settings = new AppSettings
@@ -24,6 +24,45 @@ public class UserPromptPersonalizationServiceTests
         Assert.Contains("Name: Akhil", prompt);
         Assert.Contains("Email: akhil@example.com", prompt);
         Assert.Contains("Write an email using this text: hello", prompt);
+    }
+
+    [Fact]
+    public void BuildPrompt_DoesNotIncludeProfileSection_ForGenericRewrite()
+    {
+        var service = new UserPromptPersonalizationService();
+        var settings = new AppSettings
+        {
+            UserProfile = new UserProfileSettings
+            {
+                Name = "Akhil",
+                Email = "akhil@example.com"
+            }
+        };
+
+        var prompt = service.BuildPrompt("Rewrite this clearly: {text}", "hello", settings);
+
+        Assert.DoesNotContain("Name: Akhil", prompt);
+        Assert.DoesNotContain("Email: akhil@example.com", prompt);
+        Assert.Contains("Rewrite this clearly: hello", prompt);
+    }
+
+    [Fact]
+    public void BuildPrompt_IncludesProfileSection_WhenSelectedTextHasIdentityPlaceholder()
+    {
+        var service = new UserPromptPersonalizationService();
+        var settings = new AppSettings
+        {
+            UserProfile = new UserProfileSettings
+            {
+                Name = "Akhil",
+                Email = "akhil@example.com"
+            }
+        };
+
+        var prompt = service.BuildPrompt("Improve this: {text}", "Best,\n[Your Name]", settings);
+
+        Assert.Contains("Name: Akhil", prompt);
+        Assert.Contains("Do not add a sign-off", prompt);
     }
 
     [Fact]

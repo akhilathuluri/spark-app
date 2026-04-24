@@ -16,21 +16,19 @@ public sealed class ActionRecommendationContext
 {
     private static readonly Regex UrlRe = new(@"(https?://|www\.)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex ListLineRe = new(@"^\s*([-*]|\d+\.)\s+", RegexOptions.Multiline | RegexOptions.Compiled);
+    private static readonly Regex EmailStructureRe = new(@"\b(dear|hello|hi|thanks|regards|sincerely)\b|^subject\s*:", RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.Compiled);
+    private static readonly Regex RecencyIntentRe = new(@"\b(latest|current|today|recent|news|price|weather|score|release|version|update|who\s+is|where\s+is|when\s+is)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex PromptShapeRe = new(@"\b(act as|you are|write a prompt|system prompt|instructions|constraints|output format|criteria)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly HashSet<string> PromptIntentKeywords = new(StringComparer.OrdinalIgnoreCase)
     {
-        "prompt", "write", "create", "generate", "draft", "improve", "rewrite", "summarize", "explain"
+        "prompt", "create", "generate", "draft", "instruction", "instructions", "constraints"
     };
 
     private static readonly string[] CodeIndicators =
     {
         "{", "}", "=>", "->", "def ", "func ", "class ", "import ", "using ", "var ", "const ", "let ",
         "function ", "#include", "public ", "private ", "protected ", "return ", "if (", "for (", "while (",
-        "try {", "catch (", "namespace ", "Console.", "System.", "</", " />"
-    };
-
-    private static readonly string[] EmailIndicators =
-    {
-        "dear ", "hi ", "hello ", "best regards", "kind regards", "sincerely", "subject:", "thanks,"
+        "try {", "catch (", "namespace ", "Console.", "System.", "</", " />", "```", "SELECT ", "FROM "
     };
 
     public string Text { get; init; } = string.Empty;
@@ -45,6 +43,10 @@ public sealed class ActionRecommendationContext
     public bool IsQuestionLike { get; init; }
     public bool HasUrl { get; init; }
     public bool IsListLike { get; init; }
+    public bool IsLikelyNonEnglish { get; init; }
+    public bool IsVeryShort { get; init; }
+    public bool LooksLikeSearchQuery { get; init; }
+    public bool LooksLikePrompt { get; init; }
     public bool ContainsPromptIntent { get; init; }
 
     public static ActionRecommendationContext Create(string text, string? processName)
@@ -67,6 +69,10 @@ public sealed class ActionRecommendationContext
             IsQuestionLike = IsQuestion(trimmed),
             HasUrl = UrlRe.IsMatch(safeText),
             IsListLike = ListLineRe.IsMatch(safeText),
+            IsLikelyNonEnglish = DetectLikelyNonEnglish(safeText),
+            IsVeryShort = CountWords(safeText) > 0 && CountWords(safeText) <= 8,
+            LooksLikeSearchQuery = DetectSearchQuery(trimmed),
+            LooksLikePrompt = DetectPromptShape(trimmed),
             ContainsPromptIntent = ContainsPromptKeywords(trimmed)
         };
     }
@@ -99,8 +105,7 @@ public sealed class ActionRecommendationContext
     private static bool IsCode(string text) =>
         CodeIndicators.Any(indicator => text.Contains(indicator, StringComparison.Ordinal));
 
-    private static bool IsEmail(string text) =>
-        EmailIndicators.Any(indicator => text.Contains(indicator, StringComparison.OrdinalIgnoreCase));
+    private static bool IsEmail(string text) => EmailStructureRe.IsMatch(text);
 
     private static bool IsQuestion(string text)
     {
@@ -113,7 +118,45 @@ public sealed class ActionRecommendationContext
         var lower = text.ToLowerInvariant();
         return lower.StartsWith("how ") || lower.StartsWith("why ") || lower.StartsWith("what ") ||
                lower.StartsWith("when ") || lower.StartsWith("where ") || lower.StartsWith("can ") ||
-               lower.StartsWith("could ") || lower.StartsWith("should ");
+               lower.StartsWith("could ") || lower.StartsWith("should ") || lower.StartsWith("is ") ||
+               lower.StartsWith("are ") || lower.StartsWith("do ") || lower.StartsWith("does ");
+    }
+
+    private static bool DetectSearchQuery(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return false;
+
+        return RecencyIntentRe.IsMatch(text) ||
+               (IsQuestion(text) && CountWords(text) <= 18);
+    }
+
+    private static bool DetectPromptShape(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return false;
+
+        return PromptShapeRe.IsMatch(text) ||
+               (ContainsPromptKeywords(text) && CountWords(text) >= 5);
+    }
+
+    private static bool DetectLikelyNonEnglish(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return false;
+
+        var letters = text.Where(char.IsLetter).ToList();
+        if (letters.Count < 8)
+            return false;
+
+        var nonAsciiLetters = letters.Count(c => c > 127);
+        if ((double)nonAsciiLetters / letters.Count >= 0.12)
+            return true;
+
+        var lower = text.ToLowerInvariant();
+        return lower.Contains("¿") || lower.Contains("¡") ||
+               lower.Contains(" el ") || lower.Contains(" la ") || lower.Contains(" que ") ||
+               lower.Contains(" de ") || lower.Contains(" por ") || lower.Contains(" para ");
     }
 
     private static bool ContainsPromptKeywords(string text)
