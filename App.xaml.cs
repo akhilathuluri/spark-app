@@ -84,7 +84,7 @@ public partial class App : Application
         _actionsService = new ActionsService(_settingsService);
         _ = _actionsService.GetAllActions(); // warm cache for first hotkey press
         _aiService = new AiService(_settingsService);
-        _ = _aiService.WarmUpAsync(); // pre-connect SDK clients so first hotkey press is instant
+        _aiService.EnsureWarmedUp(); // fast TCP+TLS warmup - no API calls
         _internetSearchService = new InternetSearchService(_settingsService);
         _textCapture = new TextCaptureService();
         _historyService = new HistoryService();
