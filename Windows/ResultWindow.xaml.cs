@@ -173,7 +173,13 @@ public partial class ResultWindow : Window
         int chunkCount = 0, resultLength = 0;
         var cfg        = _settingsService.Load();
         var provider   = cfg.ActiveProvider;
-        var model      = provider == "Groq" ? cfg.Groq.Model : cfg.OpenRouter.Model;
+        var model      = provider switch
+        {
+            "Groq"   => cfg.Groq.Model,
+            "OpenAI" => cfg.OpenAI?.Model ?? string.Empty,
+            "Gemini" => cfg.Gemini?.Model ?? string.Empty,
+            _        => cfg.OpenRouter.Model
+        };
         _analyticsService.TrackActionStarted(action.Id, action.Name, action.IsBuiltIn, provider, model);
 
         try

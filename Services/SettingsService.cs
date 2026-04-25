@@ -20,6 +20,8 @@ public class SettingsService
     private const string OpenRouterApiKeyName = "openrouter.apiKey";
     private const string GroqApiKeyName = "groq.apiKey";
     private const string TavilyApiKeyName = "tavily.apiKey";
+    private const string OpenAIApiKeyName = "openai.apiKey";
+    private const string GeminiApiKeyName = "gemini.apiKey";
 
     private readonly ISecretStore _secretStore;
     private readonly string _settingsPath;
@@ -185,6 +187,8 @@ public class SettingsService
         _secretStore.Remove(OpenRouterApiKeyName);
         _secretStore.Remove(GroqApiKeyName);
         _secretStore.Remove(TavilyApiKeyName);
+        _secretStore.Remove(OpenAIApiKeyName);
+        _secretStore.Remove(GeminiApiKeyName);
     }
 
     private bool HydrateSecrets(AppSettings settings)
@@ -272,6 +276,64 @@ public class SettingsService
             }
         }
 
+        // ── OpenAI ──────────────────────────────────────────────────────────
+        settings.OpenAI ??= new OpenAISettings();
+        string? openAIFromStore = null;
+        try
+        {
+            openAIFromStore = _secretStore.Get(OpenAIApiKeyName);
+        }
+        catch (Exception ex)
+        {
+            DebugLogService.LogError("SettingsService.HydrateSecrets.OpenAIGet", ex);
+        }
+
+        if (!string.IsNullOrWhiteSpace(openAIFromStore))
+        {
+            settings.OpenAI.ApiKey = openAIFromStore;
+        }
+        else if (!string.IsNullOrWhiteSpace(settings.OpenAI.ApiKey))
+        {
+            try
+            {
+                _secretStore.Set(OpenAIApiKeyName, settings.OpenAI.ApiKey);
+                migrated = true;
+            }
+            catch (Exception ex)
+            {
+                DebugLogService.LogError("SettingsService.HydrateSecrets.OpenAISet", ex);
+            }
+        }
+
+        // ── Gemini ──────────────────────────────────────────────────────────
+        settings.Gemini ??= new GeminiSettings();
+        string? geminiFromStore = null;
+        try
+        {
+            geminiFromStore = _secretStore.Get(GeminiApiKeyName);
+        }
+        catch (Exception ex)
+        {
+            DebugLogService.LogError("SettingsService.HydrateSecrets.GeminiGet", ex);
+        }
+
+        if (!string.IsNullOrWhiteSpace(geminiFromStore))
+        {
+            settings.Gemini.ApiKey = geminiFromStore;
+        }
+        else if (!string.IsNullOrWhiteSpace(settings.Gemini.ApiKey))
+        {
+            try
+            {
+                _secretStore.Set(GeminiApiKeyName, settings.Gemini.ApiKey);
+                migrated = true;
+            }
+            catch (Exception ex)
+            {
+                DebugLogService.LogError("SettingsService.HydrateSecrets.GeminiSet", ex);
+            }
+        }
+
         return migrated;
     }
 
@@ -312,6 +374,30 @@ public class SettingsService
                 DebugLogService.LogError("SettingsService.PersistSecrets.Tavily", ex);
             }
         }
+
+        if (!string.IsNullOrWhiteSpace(settings.OpenAI?.ApiKey))
+        {
+            try
+            {
+                _secretStore.Set(OpenAIApiKeyName, settings.OpenAI.ApiKey);
+            }
+            catch (Exception ex)
+            {
+                DebugLogService.LogError("SettingsService.PersistSecrets.OpenAI", ex);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(settings.Gemini?.ApiKey))
+        {
+            try
+            {
+                _secretStore.Set(GeminiApiKeyName, settings.Gemini.ApiKey);
+            }
+            catch (Exception ex)
+            {
+                DebugLogService.LogError("SettingsService.PersistSecrets.Gemini", ex);
+            }
+        }
     }
 
     private static AppSettings CloneWithoutSecrets(AppSettings settings)
@@ -331,6 +417,16 @@ public class SettingsService
             {
                 ApiKey = string.Empty,
                 Model = settings.Groq.Model
+            },
+            OpenAI = new OpenAISettings
+            {
+                ApiKey = string.Empty,
+                Model = settings.OpenAI?.Model ?? string.Empty
+            },
+            Gemini = new GeminiSettings
+            {
+                ApiKey = string.Empty,
+                Model = settings.Gemini?.Model ?? string.Empty
             },
             Tavily = new TavilySettings
             {
@@ -386,11 +482,15 @@ public class SettingsService
             recovered.Add("hotkey key");
         }
 
-        if (settings.ActiveProvider != "OpenRouter" && settings.ActiveProvider != "Groq")
+        if (settings.ActiveProvider != "OpenRouter" && settings.ActiveProvider != "Groq" &&
+            settings.ActiveProvider != "OpenAI" && settings.ActiveProvider != "Gemini")
         {
             settings.ActiveProvider = "OpenRouter";
             recovered.Add("AI provider");
         }
+
+        settings.OpenAI ??= new OpenAISettings();
+        settings.Gemini ??= new GeminiSettings();
 
         settings.CustomActions ??= new List<CustomAction>();
         int beforeCustomCount = settings.CustomActions.Count;

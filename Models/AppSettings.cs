@@ -11,6 +11,8 @@ public class AppSettings
     public string ActiveProvider { get; set; } = "OpenRouter";
     public OpenRouterSettings OpenRouter { get; set; } = new();
     public GroqSettings Groq { get; set; } = new();
+    public OpenAISettings OpenAI { get; set; } = new();
+    public GeminiSettings Gemini { get; set; } = new();
     public TavilySettings Tavily { get; set; } = new();
     public List<CustomAction> CustomActions { get; set; } = new();
     public List<BuiltInActionPreference> BuiltInActionPreferences { get; set; } = new();
@@ -44,6 +46,18 @@ public class GroqSettings
 public class TavilySettings
 {
     public string ApiKey { get; set; } = string.Empty;
+}
+
+public class OpenAISettings
+{
+    public string ApiKey { get; set; } = string.Empty;
+    public string Model { get; set; } = string.Empty;
+}
+
+public class GeminiSettings
+{
+    public string ApiKey { get; set; } = string.Empty;
+    public string Model { get; set; } = string.Empty;
 }
 
 public class CustomAction

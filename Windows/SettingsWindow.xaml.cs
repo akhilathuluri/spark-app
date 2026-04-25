@@ -61,7 +61,13 @@ public partial class SettingsWindow : Window
     private void LoadSettings()
     {
         // Provider
-        ProviderCombo.SelectedIndex = _settings.ActiveProvider == "Groq" ? 1 : 0;
+        ProviderCombo.SelectedIndex = _settings.ActiveProvider switch
+        {
+            "Groq"   => 1,
+            "OpenAI" => 2,
+            "Gemini" => 3,
+            _        => 0
+        };
 
         // OpenRouter
         OpenRouterKeyBox.Password = _settings.OpenRouter.ApiKey;
@@ -70,6 +76,14 @@ public partial class SettingsWindow : Window
         // Groq
         GroqKeyBox.Password = _settings.Groq.ApiKey;
         GroqModelBox.Text = _settings.Groq.Model;
+
+        // OpenAI
+        OpenAIKeyBox.Password = _settings.OpenAI?.ApiKey ?? string.Empty;
+        OpenAIModelBox.Text = _settings.OpenAI?.Model ?? string.Empty;
+
+        // Gemini
+        GeminiKeyBox.Password = _settings.Gemini?.ApiKey ?? string.Empty;
+        GeminiModelBox.Text = _settings.Gemini?.Model ?? string.Empty;
 
         // Tavily
         TavilyKeyBox.Password = _settings.Tavily.ApiKey;
@@ -112,7 +126,9 @@ public partial class SettingsWindow : Window
         {
             var tag = item.Tag?.ToString() ?? "OpenRouter";
             OpenRouterPanel.Visibility = tag == "OpenRouter" ? Visibility.Visible : Visibility.Collapsed;
-            GroqPanel.Visibility = tag == "Groq" ? Visibility.Visible : Visibility.Collapsed;
+            GroqPanel.Visibility       = tag == "Groq"       ? Visibility.Visible : Visibility.Collapsed;
+            OpenAIPanel.Visibility     = tag == "OpenAI"     ? Visibility.Visible : Visibility.Collapsed;
+            GeminiPanel.Visibility     = tag == "Gemini"     ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 
@@ -123,6 +139,14 @@ public partial class SettingsWindow : Window
         _settings.Groq.ApiKey = GroqKeyBox.Password.Trim();
         _settings.Groq.Model = GroqModelBox.Text.Trim();
         _settings.Tavily.ApiKey = TavilyKeyBox.Password.Trim();
+
+        _settings.OpenAI ??= new Models.OpenAISettings();
+        _settings.OpenAI.ApiKey = OpenAIKeyBox.Password.Trim();
+        _settings.OpenAI.Model = OpenAIModelBox.Text.Trim();
+
+        _settings.Gemini ??= new Models.GeminiSettings();
+        _settings.Gemini.ApiKey = GeminiKeyBox.Password.Trim();
+        _settings.Gemini.Model = GeminiModelBox.Text.Trim();
         _settings.HotkeyModifiers = HotkeyModifiers.Text.Trim();
         _settings.HotkeyKey = HotkeyKey.Text.Trim();
         _settings.UserProfile.Name = WritingNameBox.Text.Trim();
@@ -334,9 +358,13 @@ public partial class SettingsWindow : Window
         OpenRouterKeyBox.Password = string.Empty;
         GroqKeyBox.Password = string.Empty;
         TavilyKeyBox.Password = string.Empty;
+        OpenAIKeyBox.Password = string.Empty;
+        GeminiKeyBox.Password = string.Empty;
         _settings.OpenRouter.ApiKey = string.Empty;
         _settings.Groq.ApiKey = string.Empty;
         _settings.Tavily.ApiKey = string.Empty;
+        if (_settings.OpenAI != null) _settings.OpenAI.ApiKey = string.Empty;
+        if (_settings.Gemini != null) _settings.Gemini.ApiKey = string.Empty;
 
         StatusLabel.Text = _loc.T("settings.keysCleared", "✓ Stored API keys cleared. Add new keys and click Save.");
     }
@@ -438,6 +466,10 @@ public partial class SettingsWindow : Window
         OpenRouterModelLabelText.Text = _loc.T("settings.modelOpenrouter", "Model (e.g. openai/gpt-4o-mini)");
         GroqApiKeyLabelText.Text = _loc.T("settings.groqKey", "Groq API Key");
         GroqModelLabelText.Text = _loc.T("settings.modelGroq", "Model (e.g. llama-3.3-70b-versatile)");
+        OpenAIApiKeyLabelText.Text = _loc.T("settings.openaiKey", "OpenAI API Key");
+        OpenAIModelLabelText.Text = _loc.T("settings.modelOpenai", "Model (e.g. gpt-4o, gpt-4o-mini)");
+        GeminiApiKeyLabelText.Text = _loc.T("settings.geminiKey", "Gemini API Key");
+        GeminiModelLabelText.Text = _loc.T("settings.modelGemini", "Model (e.g. gemini-2.0-flash, gemini-1.5-pro)");
         ApiEncryptedNoteText.Text = _loc.T("settings.encryptedNote", "API keys are encrypted with Windows DPAPI.");
         RotateKeysButton.Content = _loc.T("settings.rotateKeys", "Rotate Keys");
         LanguageHeaderText.Text = _loc.T("settings.languageHeader", "LANGUAGE");

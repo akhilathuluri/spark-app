@@ -278,6 +278,8 @@
                               Margin="0,0,0,12">
                         <ComboBoxItem Content="OpenRouter" Tag="OpenRouter"/>
                         <ComboBoxItem Content="Groq" Tag="Groq"/>
+                        <ComboBoxItem Content="OpenAI" Tag="OpenAI"/>
+                        <ComboBoxItem Content="Gemini (Google)" Tag="Gemini"/>
                     </ComboBox>
 
                     <!-- OpenRouter settings -->
@@ -304,6 +306,32 @@
                         <TextBox x:Name="GroqModelBox" Style="{StaticResource InputStyle}"
                                  Margin="0,0,0,12"
                                  ToolTip="Groq model name"/>
+                    </StackPanel>
+
+                    <!-- OpenAI settings -->
+                    <StackPanel x:Name="OpenAIPanel" Visibility="Collapsed">
+                        <TextBlock x:Name="OpenAIApiKeyLabelText" Text="OpenAI API Key" Style="{StaticResource LabelStyle}"/>
+                        <PasswordBox x:Name="OpenAIKeyBox" Style="{StaticResource PasswordStyle}"
+                                 Margin="0,0,0,10"
+                                 ToolTip="Your OpenAI API key from platform.openai.com"/>
+
+                        <TextBlock x:Name="OpenAIModelLabelText" Text="Model (e.g. gpt-4o, gpt-4o-mini)" Style="{StaticResource LabelStyle}"/>
+                        <TextBox x:Name="OpenAIModelBox" Style="{StaticResource InputStyle}"
+                                 Margin="0,0,0,12"
+                                 ToolTip="OpenAI model name"/>
+                    </StackPanel>
+
+                    <!-- Gemini settings -->
+                    <StackPanel x:Name="GeminiPanel" Visibility="Collapsed">
+                        <TextBlock x:Name="GeminiApiKeyLabelText" Text="Gemini API Key" Style="{StaticResource LabelStyle}"/>
+                        <PasswordBox x:Name="GeminiKeyBox" Style="{StaticResource PasswordStyle}"
+                                 Margin="0,0,0,10"
+                                 ToolTip="Your Gemini API key from aistudio.google.com"/>
+
+                        <TextBlock x:Name="GeminiModelLabelText" Text="Model (e.g. gemini-2.0-flash, gemini-1.5-pro)" Style="{StaticResource LabelStyle}"/>
+                        <TextBox x:Name="GeminiModelBox" Style="{StaticResource InputStyle}"
+                                 Margin="0,0,0,12"
+                                 ToolTip="Gemini model name"/>
                     </StackPanel>
 
                     <!-- ── Internet Search ── -->
