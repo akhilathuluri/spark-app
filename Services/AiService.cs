@@ -15,6 +15,7 @@ public class AiService : IDisposable
     private const int DefaultHttpTimeoutSeconds = 180;
     private const int MinHttpTimeoutSeconds = 30;
     private const int MaxHttpTimeoutSeconds = 600;
+    private const int DefaultMaxTokens = 4096;
 
     private readonly HttpClient _httpClient;
     private readonly SettingsService _settingsService;
@@ -28,6 +29,10 @@ public class AiService : IDisposable
 
     private Client? _geminiClient;
     private string? _geminiClientKey;
+
+    // Warmup tracking - aggressive pre-initialization
+    private bool _isWarmedUp;
+    private string? _lastWarmupProvider;
 
     public AiService(SettingsService settingsService)
     {
@@ -47,16 +52,70 @@ public class AiService : IDisposable
     public void Dispose() => _httpClient.Dispose();
 
     /// <summary>
-    /// Pre-initializes SDK clients for the active provider in the background at startup.
-    /// Gemini's Client constructor makes a network call on first use; warming it up here
-    /// means the first hotkey press doesn't pay that latency cost.
-    /// Fire-and-forget — errors are logged and silently swallowed.
+    /// Pre-warms SDK clients and HTTP connections for faster first request.
+    /// Unlike expensive WarmUpAsync (which makes API calls), this only establishes
+    /// TCP connections so DNS/tls handshake is cached.
     /// </summary>
-    public Task WarmUpAsync() => Task.Run(() =>
+    public void EnsureWarmedUp()
+    {
+        if (_isWarmedUp) return;
+
+        try
+        {
+            var settings = _settingsService.Load();
+            _lastWarmupProvider = settings.ActiveProvider;
+
+            switch (settings.ActiveProvider)
+            {
+                case "Gemini" when !string.IsNullOrWhiteSpace(settings.Gemini?.ApiKey):
+                    _ = GetGeminiClient(settings.Gemini);
+                    break;
+                case "OpenAI" when !string.IsNullOrWhiteSpace(settings.OpenAI?.ApiKey)
+                                && !string.IsNullOrWhiteSpace(settings.OpenAI?.Model):
+                    _ = GetOpenAIClient(settings.OpenAI);
+                    break;
+                case "Groq" when !string.IsNullOrWhiteSpace(settings.Groq.ApiKey):
+                    _ = WarmUpTcpConnectionAsync("https://api.groq.com");
+                    break;
+                case "OpenRouter" when !string.IsNullOrWhiteSpace(settings.OpenRouter.ApiKey):
+                    _ = WarmUpTcpConnectionAsync("https://openrouter.ai");
+                    break;
+            }
+
+            _isWarmedUp = true;
+        }
+        catch (Exception ex)
+        {
+            DebugLogService.LogError("AiService.EnsureWarmedUp", ex);
+        }
+    }
+
+    /// <summary>
+    /// Fast warmup - just establishes TCP+TLS connection without sending any data.
+    /// This caches DNS resolution and TLS handshake for subsequent requests.
+    /// </summary>
+    private async Task WarmUpTcpConnectionAsync(string url)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.Add("User-Agent", "Spark/1.0");
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            using var _ = await _httpClient.SendAsync(req, cts.Token);
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Full warmup - makes a minimal API call to initialize the actual client.
+    /// Only call this when user explicitly triggers it, not on startup.
+    /// </summary>
+    public Task WarmUpFullAsync() => Task.Run(async () =>
     {
         try
         {
             var settings = _settingsService.Load();
+
             switch (settings.ActiveProvider)
             {
                 case "Gemini" when !string.IsNullOrWhiteSpace(settings.Gemini?.ApiKey):
@@ -66,13 +125,33 @@ public class AiService : IDisposable
                                 && !string.IsNullOrWhiteSpace(settings.OpenAI?.Model):
                     GetOpenAIClient(settings.OpenAI);
                     break;
+                case "Groq" when !string.IsNullOrWhiteSpace(settings.Groq.ApiKey):
+                    await WarmUpHttpConnectionAsync("https://api.groq.com/openai/v1/models", settings.Groq.ApiKey);
+                    break;
+                case "OpenRouter" when !string.IsNullOrWhiteSpace(settings.OpenRouter.ApiKey):
+                    await WarmUpHttpConnectionAsync("https://openrouter.ai/api/v1/models", settings.OpenRouter.ApiKey);
+                    break;
             }
+
+            _isWarmedUp = true;
         }
         catch (Exception ex)
         {
-            DebugLogService.LogError("AiService.WarmUpAsync", ex);
+            DebugLogService.LogError("AiService.WarmUpFullAsync", ex);
         }
     });
+
+    private async Task WarmUpHttpConnectionAsync(string url, string apiKey)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.Add("Authorization", $"Bearer {apiKey}");
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var _ = await _httpClient.SendAsync(req, cts.Token);
+        }
+        catch { }
+    }
 
     private static int GetConfiguredTimeoutSeconds()
     {
@@ -109,7 +188,11 @@ public class AiService : IDisposable
         {
             model = config.Model,
             messages = new[] { new { role = "user", content = prompt } },
-            max_tokens = 8192
+            max_tokens = DefaultMaxTokens,
+            temperature = 0.7,
+            top_p = 0.9,
+            frequency_penalty = 0.0,
+            presence_penalty = 0.0
         });
 
         var retryPolicy = RetryService.GetHttpRetryPolicy();
@@ -119,6 +202,7 @@ public class AiService : IDisposable
             req.Headers.Add("Authorization", $"Bearer {config.ApiKey}");
             req.Headers.Add("HTTP-Referer", "https://www.spark-app.in/");
             req.Headers.Add("X-Title", "Spark");
+            req.Headers.Add("X-Acceleration", "enabled");
             req.Content = new StringContent(requestBodyJson, Encoding.UTF8, "application/json");
             return await _httpClient.SendAsync(req, ct);
         });
@@ -177,7 +261,9 @@ public class AiService : IDisposable
         {
             model = config.Model,
             messages = new[] { new { role = "user", content = prompt } },
-            max_tokens = 8192
+            max_tokens = DefaultMaxTokens,
+            temperature = 0.7,
+            top_p = 0.9
         });
 
         var retryPolicy = RetryService.GetHttpRetryPolicy();
@@ -324,15 +410,18 @@ public class AiService : IDisposable
 
         var tokens = settings.ActiveProvider switch
         {
-            "Groq"   => StreamGroqAsync(settings.Groq, fullPrompt, ct),
-            "OpenAI" => StreamOpenAIAsync(settings.OpenAI, fullPrompt, ct),
-            "Gemini" => StreamGeminiAsync(settings.Gemini, fullPrompt, ct),
-            _        => StreamOpenRouterAsync(settings.OpenRouter, fullPrompt, ct)
+            "Groq"   => StreamGroqAsync(settings.Groq!, fullPrompt, ct),
+            "OpenAI" => StreamOpenAIAsync(settings.OpenAI!, fullPrompt, ct),
+            "Gemini" => StreamGeminiAsync(settings.Gemini!, fullPrompt, ct),
+            _        => StreamOpenRouterAsync(settings.OpenRouter!, fullPrompt, ct)
         };
 
         await using var enumerator = tokens.GetAsyncEnumerator(ct);
         while (await enumerator.MoveNextAsync())
-            yield return enumerator.Current;
+        {
+            if (enumerator.Current is { } tok && !string.IsNullOrEmpty(tok))
+                yield return tok;
+        }
     }
 
     private async IAsyncEnumerable<string> StreamOpenRouterAsync(
@@ -349,7 +438,7 @@ public class AiService : IDisposable
         {
             model    = config.Model,
             messages = new[] { new { role = "user", content = prompt } },
-            max_tokens = 8192,
+            max_tokens = DefaultMaxTokens,
             stream   = true
         });
 
@@ -544,8 +633,10 @@ public class AiService : IDisposable
         {
             model    = config.Model,
             messages = new[] { new { role = "user", content = prompt } },
-            max_tokens = 8192,
-            stream   = true
+            max_tokens = DefaultMaxTokens,
+            stream   = true,
+            temperature = 0.7,
+            top_p = 0.9
         });
 
         var retryPolicy = RetryService.GetHttpRetryPolicy();

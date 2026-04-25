@@ -162,8 +162,8 @@ public partial class ResultWindow : Window
         _cts = new CancellationTokenSource();
         bool firstVisibleToken = true;
         bool hadLeadingNonVisibleTokens = false;
-        const int SmoothRevealDelayMs = 60;
-        const int LiveFlushIntervalMs = 35;
+        const int SmoothRevealDelayMs = 20;
+        const int LiveFlushIntervalMs = 20;
         EnsureUiFlushTimer();
         _uiFlushTimer!.Start();
         var liveFlushStopwatch = System.Diagnostics.Stopwatch.StartNew();
