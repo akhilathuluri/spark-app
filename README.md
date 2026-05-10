@@ -145,7 +145,8 @@ Right-click the tray icon → **Settings**
 
 Settings are stored as JSON at:
 
-```\n%AppData%\Spark\settings.json
+```
+\%AppData%\Spark\settings.json
 ```
 
 You can edit this file directly if needed. Delete it to reset to defaults.
@@ -154,7 +155,8 @@ You can edit this file directly if needed. Delete it to reset to defaults.
 
 Spark writes debug logs to:
 
-```\n%AppData%\Spark\debug.log
+```
+\%AppData%\Spark\debug.log
 ```
 
 Capture diagnostics logs (`[CAPTURE] ...`) are enabled by default for public builds.
